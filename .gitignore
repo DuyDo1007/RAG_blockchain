@@ -44,11 +44,16 @@ models/*.h5
 models/*.pt
 models/*.pth
 
-# Data processed
-data/processed/*.csv
-data/processed/*.parquet
-data/processed/*.bin
-data/synthetic/*.csv
+# Data folders
+data/processed/
+data/synthetic/
+data/local_db/
+
+# Archives
+*.zip
+*.rar
+*.tar.gz
+*.7z
 
 # OS
 .DS_Store

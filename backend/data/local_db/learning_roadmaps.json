@@ -1,0 +1,88 @@
+[
+  {
+    "title": "Blockchain Security Fundamentals",
+    "description": "Comprehensive guide to blockchain security for beginners",
+    "target_audience": "beginner",
+    "lessons": [
+      {
+        "id": "lesson_01",
+        "title": "Blockchain Basics",
+        "description": "Understand how blockchain technology works",
+        "duration_minutes": 60,
+        "difficulty": "beginner",
+        "content_url": "/content/blockchain-basics",
+        "resources": [
+          "https://blockchain.com/learning",
+          "Bitcoin whitepaper"
+        ],
+        "quiz_questions": [
+          {
+            "question": "What is blockchain?",
+            "options": [
+              "A database",
+              "A distributed ledger",
+              "A cryptocurrency"
+            ],
+            "correct_answer": 1
+          }
+        ]
+      },
+      {
+        "id": "lesson_02",
+        "title": "Smart Contracts 101",
+        "description": "Introduction to smart contracts on Ethereum",
+        "duration_minutes": 75,
+        "difficulty": "beginner",
+        "content_url": "/content/smart-contracts",
+        "resources": [
+          "Solidity docs",
+          "Ethereum.org"
+        ],
+        "quiz_questions": []
+      },
+      {
+        "id": "lesson_03",
+        "title": "Common Vulnerabilities",
+        "description": "Learn about common security vulnerabilities in smart contracts",
+        "duration_minutes": 90,
+        "difficulty": "beginner",
+        "content_url": "/content/vulnerabilities",
+        "resources": [
+          "OWASP Smart Contract Top 10"
+        ],
+        "quiz_questions": []
+      },
+      {
+        "id": "lesson_04",
+        "title": "Security Best Practices",
+        "description": "Best practices for securing blockchain applications",
+        "duration_minutes": 120,
+        "difficulty": "intermediate",
+        "content_url": "/content/best-practices",
+        "resources": [
+          "Security audit guidelines",
+          "Industry standards"
+        ],
+        "quiz_questions": []
+      },
+      {
+        "id": "lesson_05",
+        "title": "Hands-on: Code Analysis",
+        "description": "Practical exercise in analyzing and identifying vulnerabilities",
+        "duration_minutes": 150,
+        "difficulty": "intermediate",
+        "content_url": "/content/code-analysis",
+        "resources": [
+          "Sample vulnerable contracts",
+          "Analysis tools"
+        ],
+        "quiz_questions": []
+      }
+    ],
+    "estimated_duration_hours": 40.0,
+    "prerequisites": [],
+    "created_at": "2026-07-06 13:20:40.717954",
+    "updated_at": "2026-07-06 13:20:40.717954",
+    "_id": "6a4baba89d00282646404f9d"
+  }
+]

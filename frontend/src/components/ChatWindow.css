@@ -1,0 +1,35 @@
+/* ===== Chat Window Styles ===== */
+.chat-window {
+  background: var(--bg-surface);
+}
+
+/* Message slide-in animation */
+@keyframes msg-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.msg-enter {
+  animation: msg-slide-in 0.3s ease-out;
+}
+
+/* Input focus glow */
+.chat-window input:focus {
+  box-shadow: 0 0 0 1px rgba(6, 182, 212, 0.2), 0 0 15px rgba(6, 182, 212, 0.08);
+}
+
+/* Messages scrollbar */
+.chat-window .overflow-y-auto::-webkit-scrollbar {
+  width: 4px;
+}
+
+.chat-window .overflow-y-auto::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.15);
+  border-radius: 2px;
+}

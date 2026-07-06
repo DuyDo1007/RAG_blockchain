@@ -249,10 +249,10 @@ streamlit run src/app.py
 ```python
 from src.rag_qa import retrieve, compose_prompt
 
-# Tìm kiếm documents
+
 docs = retrieve("reentrancy vulnerability", k=3)
 
-# Tạo prompt
+
 prompt = compose_prompt("What is reentrancy?", docs)
 print(prompt)
 ```
@@ -263,12 +263,12 @@ print(prompt)
 import joblib
 from sentence_transformers import SentenceTransformer
 
-# Load model
+
 meta = joblib.load('models/trained_if.pkl')
 clf = meta['clf']
 model = SentenceTransformer(meta['emb_model_name'])
 
-# Predict
+
 text = "Your finding text here"
 emb = model.encode([text])
 score = clf.decision_function(emb)[0]
