@@ -111,7 +111,7 @@ class UserProgress(BaseModel):
     user_id: str
     roadmap_id: str
     completed_lessons: List[str] = []
-    current_lesson: str
+    current_lesson: Any = 0
     progress_percentage: float = 0.0
     started_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
@@ -125,10 +125,10 @@ class UserProgress(BaseModel):
 
 class CreateChatRequest(BaseModel):
     """Request to create/send chat message"""
-    user_id: str
+    user_id: Optional[str] = None
     session_id: Optional[str] = None
     message: str
-    model: str = "gemini-pro"
+    model: str = "gemini-2.5-flash"
 
     model_config = ConfigDict(
         arbitrary_types_allowed=True
@@ -148,3 +148,68 @@ class ChatResponse(BaseModel):
         arbitrary_types_allowed=True,
         json_encoders={datetime: lambda v: v.isoformat()}
     )
+
+
+# =====================================================================
+# Authentication & User Schemas
+# =====================================================================
+
+class UserCreate(BaseModel):
+    """Request schema for user registration"""
+    email: str
+    username: str
+    password: str = Field(..., min_length=8, description="Password must be at least 8 characters")
+
+
+class UserLogin(BaseModel):
+    """Request schema for user login"""
+    email: str
+    password: str
+
+
+class GoogleAuthRequest(BaseModel):
+    """Request schema for Google OAuth verification"""
+    id_token: str
+
+
+class RefreshTokenRequest(BaseModel):
+    """Request schema for token refresh"""
+    refresh_token: str
+
+
+class TokenResponse(BaseModel):
+    """Response schema containing JWT tokens"""
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"
+
+
+class UserResponse(BaseModel):
+    """Response schema for user profile info"""
+    id: str
+    email: str
+    username: str
+    auth_provider: str
+    avatar_url: Optional[str] = None
+    created_at: datetime
+
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+        json_encoders={datetime: lambda v: v.isoformat()}
+    )
+
+
+# =====================================================================
+# Contract Audit Schemas
+# =====================================================================
+
+class ContractAuditRequest(BaseModel):
+    """Request schema to audit contract by address"""
+    address: str = Field(..., description="Blockchain smart contract address (e.g. 0x...)")
+    chain: str = Field(default="ethereum", description="Blockchain network: 'ethereum' or 'bsc'")
+
+
+class ContractAnalyzeRequest(BaseModel):
+    """Request schema to analyze raw code"""
+    code: str = Field(..., description="Raw Solidity or Vyper code")
+    language: str = Field(default="solidity", description="Programming language: 'solidity' or 'vyper'")

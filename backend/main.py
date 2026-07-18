@@ -1,19 +1,28 @@
 """
-FastAPI Main Application
+FastAPI Main Application (Production-Ready with Auth, CORS, and Rate Limiting)
 """
 import os
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from dotenv import load_dotenv
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
 from backend.models.database import MongoDBManager
 from backend.api.chat import router as chat_router
 from backend.api.roadmap import router as roadmap_router
+from backend.api.auth import router as auth_router
+from backend.api.contract import router as contract_router
+from backend.api.streaming import router as streaming_router
 
 load_dotenv()
 
-# Lifespan context manager for startup/shutdown
+# Rate Limiter setup
+limiter = Limiter(key_func=get_remote_address, default_limits=["60/minute"])
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
@@ -27,36 +36,48 @@ async def lifespan(app: FastAPI):
 
 # Initialize FastAPI
 app = FastAPI(
-    title="GenAI Blockchain Security - Chatbot API",
-    description="RAG-based chatbot with learning roadmap",
-    version="1.0.0",
+    title="GenAI Blockchain Security - Chatbot & Audit API",
+    description="Production-ready RAG chatbot and smart contract auditor with learning roadmap",
+    version="2.0.0",
     lifespan=lifespan
 )
 
-# Middleware
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# CORS Middleware setup
+allowed_origins_env = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:3000")
+origins = [origin.strip() for origin in allowed_origins_env.split(",") if origin.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, restrict to specific domains
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # Include routers
+app.include_router(auth_router)
 app.include_router(chat_router)
+app.include_router(streaming_router)
 app.include_router(roadmap_router)
+app.include_router(contract_router)
 
 
 @app.get("/")
-async def root():
+@limiter.limit("30/minute")
+async def root(request: Request):
     """Root endpoint"""
     return {
-        "message": "GenAI Blockchain Security Chatbot API",
+        "message": "GenAI Blockchain Security Chatbot & Audit API",
         "status": "running",
-        "version": "1.0.0",
+        "version": "2.0.0",
         "endpoints": {
+            "auth": "/api/auth",
             "chat": "/api/chat",
             "roadmap": "/api/roadmap",
+            "contract": "/api/contract",
             "docs": "/docs"
         }
     }
@@ -64,7 +85,8 @@ async def root():
 
 @app.get("/health")
 @app.get("/api/health")
-async def health_check():
+@limiter.limit("60/minute")
+async def health_check(request: Request):
     """Health check endpoint checking MongoDB connectivity"""
     mongo_status = "connected"
     try:
@@ -75,7 +97,7 @@ async def health_check():
         
     return {
         "status": "healthy" if "error" not in mongo_status else "unhealthy",
-        "version": "1.0.0",
+        "version": "2.0.0",
         "mongodb": mongo_status
     }
 

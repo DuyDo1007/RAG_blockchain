@@ -107,7 +107,7 @@ def rrf_merge(lists, k=60):
     sorted_items = sorted(rrf_scores.items(), key=lambda x: x[1], reverse=True)
     return [item for item, score in sorted_items]
 
-def retrieve_hybrid(query, top_k=6, fetch_k=30):
+def retrieve_hybrid(query, top_k=6, fetch_k=12):
     faiss_hits = faiss_search(query, k=fetch_k)
     bm25_hits = bm25_search(query, k=fetch_k)
     merged_indices = rrf_merge([faiss_hits, bm25_hits])[:fetch_k]
@@ -115,6 +115,21 @@ def retrieve_hybrid(query, top_k=6, fetch_k=30):
         return []
     _, _, meta = load_indices()
     docs = []
+    
+    # Optional bypass of CPU reranking for performance
+    disable_reranker = os.getenv("DISABLE_RERANKER", "false").lower() == "true"
+    if disable_reranker:
+        for idx in merged_indices[:top_k]:
+            row = meta.iloc[idx]
+            docs.append({
+                'id': int(row.get('parent_id', idx)), 
+                'title': str(row.get('title', '')), 
+                'content': str(row.get('content', '')), 
+                'code': str(row.get('code', '')), 
+                'dangerous_apis': str(row.get('dangerous_apis', ''))
+            })
+        return docs
+
     pairs = []
     for idx in merged_indices:
         row = meta.iloc[idx]
@@ -128,8 +143,50 @@ def retrieve_hybrid(query, top_k=6, fetch_k=30):
     docs = sorted(docs, key=lambda x: x['score'], reverse=True)
     return docs[:top_k]
 
+def retrieve_qdrant(query, top_k=6):
+    """Retrieve documents using Qdrant vector database with CodeBERT embedding"""
+    try:
+        from backend.services.vector_store import QdrantVectorStore
+        import asyncio
+        qdrant = QdrantVectorStore.get_instance()
+        q_emb = encode_query(query).astype('float32').tolist()
+        
+        # Run async search synchronously or in existing loop
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                # If event loop running, use nested execution or thread
+                import concurrent.futures
+                with concurrent.futures.ThreadPoolExecutor() as pool:
+                    hits = pool.submit(lambda: asyncio.run(qdrant.search(q_emb, top_k=top_k))).result()
+            else:
+                hits = loop.run_until_complete(qdrant.search(q_emb, top_k=top_k))
+        except RuntimeError:
+            hits = asyncio.run(qdrant.search(q_emb, top_k=top_k))
+            
+        docs = []
+        for hit in hits:
+            docs.append({
+                'id': int(hit.get('id', 0)) if str(hit.get('id', '0')).isdigit() else hit.get('id'),
+                'title': str(hit.get('title', '')),
+                'content': str(hit.get('content', '')),
+                'code': str(hit.get('code', '')),
+                'dangerous_apis': str(hit.get('dangerous_apis', ''))
+            })
+        return docs
+    except Exception as e:
+        print(f"[RAG] Qdrant retrieval fallback to hybrid: {e}")
+        return retrieve_hybrid(query, top_k=top_k)
+
+def retrieve_auto(query, top_k=6):
+    """Automatically choose between Qdrant and FAISS based on VECTOR_STORE env var"""
+    store_type = os.getenv("VECTOR_STORE", "qdrant").lower()
+    if store_type == "qdrant":
+        return retrieve_qdrant(query, top_k=top_k)
+    return retrieve_hybrid(query, top_k=top_k)
+
 def retrieve(query, k=6):
-    return retrieve_hybrid(query, top_k=k)
+    return retrieve_auto(query, top_k=k)
 
 def compress_context(docs):
     ctx = ''
@@ -213,20 +270,20 @@ TEACHING GUIDELINES (STRICTLY ENFORCED)
 MANDATORY RESPONSE FORMAT
 ======================================================================
 
-# 📚 Khái niệm cơ bản
+# Khái niệm
 
 - Identify the core blockchain/Solidity concept involved.
 - Explain it simply for beginners.
 - Give a real-world analogy that is easy to visualize.
 
-# 🕵️‍♂️ Cùng mổ xẻ vấn đề
+# Xem xét vấn đề
 
 - Explain what the code INTENDED to do.
 - Explain what the code ACTUALLY does.
 - Point to the problematic logic or lines from the provided context.
 - Avoid overly academic explanations.
 
-# 💥 Hacker sẽ trục lợi như thế nào?
+# Cách mà Hacker sẽ trục lợi
 
 Explain the attack step-by-step:
 
@@ -236,7 +293,7 @@ Explain the attack step-by-step:
 
 Make the attack flow easy to imagine.
 
-# 🛠️ Cách sửa lỗi & Bài học rút ra (How to Fix)
+# Bài học rút ra
 
 - Show the standard secure approach.
 - If possible, provide:
@@ -244,7 +301,7 @@ Make the attack flow easy to imagine.
   - ✅ After
 - Explain the security best practice the student should remember.
 
-# 🤔 Câu hỏi gợi mở (Test Your Knowledge)
+# Câu hỏi gợi mở
 
 Ask ONE short question related to the lesson
 to check whether the student truly understood the concept.
@@ -260,12 +317,12 @@ IMPORTANT:
 def generate_fallback_answer(query, docs):
     if not docs:
         return """
-⚠️ **Hệ thống AI hiện đang hết hạn ngạch (Out of Quota).**
+ **Hệ thống AI hiện đang Out of Quota.**
 Chúng tôi không tìm thấy tài liệu liên quan trực tiếp nào trong cơ sở dữ liệu để trả lời câu hỏi này. Vui lòng thiết lập API Key hợp lệ hoặc thử lại sau.
 """
     
     response = """
-⚠️ **Hệ thống AI hiện đang hết hạn ngạch (Out of Quota) hoặc gặp lỗi kết nối.**
+ **Hệ thống AI hiện đang Out of Quota.**
 Tuy nhiên, dựa trên tài liệu bảo mật truy xuất từ cơ sở dữ liệu tri thức của chúng tôi, dưới đây là thông tin tham khảo:
 
 """
@@ -283,7 +340,7 @@ Tuy nhiên, dựa trên tài liệu bảo mật truy xuất từ cơ sở dữ l
     response += "\n*Vui lòng cập nhật `GEMINI_API_KEY` trong file `.env` để khôi phục đầy đủ trải nghiệm trò chuyện với AI.*"
     return response
 
-def generate_answer_with_gemini(query, docs, api_key=None, model='gemini-2.5-flash', chat_history=None):
+def generate_answer_with_gemini(query, docs, api_key=None, model='gemini-2.5-pro', chat_history=None):
     import time
     try:
         from google import genai
@@ -354,10 +411,16 @@ Câu hỏi: {query}
             contents=prompt,
             config=genai.types.GenerateContentConfig(
                 temperature=0.3,
-                max_output_tokens=20
+                max_output_tokens=100
             )
         )
         title = response.text.strip().replace('"', '').replace("'", "")
+        # Remove common preambles from model output
+        prefixes = ["Tiêu đề:", "Tiêu đề cuộc trò chuyện:", "Tiêu đề là:", "Tiêu đề gợi ý:", "Trò chuyện:"]
+        for prefix in prefixes:
+            if title.lower().startswith(prefix.lower()):
+                title = title[len(prefix):].strip()
+        
         words = title.split()
         if len(words) > 6:
             title = " ".join(words[:6]) + "..."
@@ -368,3 +431,42 @@ Câu hỏi: {query}
         if len(words) > 4:
             fallback_title += "..."
         return fallback_title
+
+
+def generate_answer_streaming(query, docs, api_key=None, model='gemini-2.5-flash', chat_history=None):
+    """Generator function that yields chunks of text from Gemini stream API"""
+    try:
+        from google import genai
+    except ImportError:
+        yield "Lỗi: google-genai package chưa được cài đặt."
+        return
+
+    if not api_key:
+        api_key = os.getenv('GEMINI_API_KEY')
+    if not api_key:
+        yield "⚠️ Không tìm thấy API Key. Vui lòng thiết lập GEMINI_API_KEY trong .env."
+        return
+
+    client = genai.Client(api_key=api_key)
+    prompt = compose_prompt(query, docs, chat_history=chat_history)
+
+    try:
+        response_stream = client.models.generate_content_stream(
+            model=model,
+            contents=prompt,
+            config=genai.types.GenerateContentConfig(
+                temperature=0.2,
+                max_output_tokens=8192,
+                safety_settings=[
+                    {'category': 'HARM_CATEGORY_HATE_SPEECH', 'threshold': 'BLOCK_NONE'},
+                    {'category': 'HARM_CATEGORY_HARASSMENT', 'threshold': 'BLOCK_NONE'},
+                    {'category': 'HARM_CATEGORY_SEXUALLY_EXPLICIT', 'threshold': 'BLOCK_NONE'},
+                    {'category': 'HARM_CATEGORY_DANGEROUS_CONTENT', 'threshold': 'BLOCK_NONE'}
+                ]
+            )
+        )
+        for chunk in response_stream:
+            if chunk.text:
+                yield chunk.text
+    except Exception as e:
+        yield f"❌ Lỗi streaming từ Gemini: {str(e)}"

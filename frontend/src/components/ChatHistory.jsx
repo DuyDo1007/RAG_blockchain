@@ -17,8 +17,16 @@ const ChatHistory = ({ userId, currentSessionId, onSelectSession, onNewSession, 
     setLoading(true)
     setHasConnectionError(false)
     try {
-      const response = await axios.get(`${API_BASE_URL}/chat/sessions/${userId}`)
-      setSessions(response.data || [])
+      const token = localStorage.getItem('access_token')
+      const response = await axios.get(`${API_BASE_URL}/chat/sessions/${userId}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      })
+      const list = response.data || []
+      const normalized = list.map(item => ({
+        ...item,
+        session_id: item.session_id || item.id || item._id
+      }))
+      setSessions(normalized)
     } catch (error) {
       console.error('Error loading sessions:', error)
       setHasConnectionError(true)
@@ -31,7 +39,10 @@ const ChatHistory = ({ userId, currentSessionId, onSelectSession, onNewSession, 
     e.stopPropagation()
     if (confirm('Bạn chắc chắn muốn xóa cuộc trò chuyện này?')) {
       try {
-        await axios.delete(`${API_BASE_URL}/chat/sessions/${sessionId}`)
+        const token = localStorage.getItem('access_token')
+        await axios.delete(`${API_BASE_URL}/chat/sessions/${sessionId}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {}
+        })
         setSessions(sessions.filter(s => s.session_id !== sessionId))
       } catch (error) {
         console.error('Error deleting session:', error)

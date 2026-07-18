@@ -1,0 +1,1080 @@
+{
+  "title": "Blockchain Security Fundamentals",
+  "description": "Hướng dẫn toàn diện về bảo mật blockchain dành cho người mới bắt đầu. Lộ trình học bao gồm các kiến thức cơ bản từ blockchain, Solidity, các lỗ hổng bảo mật phổ biến, thực tiễn tốt nhất và phân tích kiểm thử mã nguồn thực tế.",
+  "target_audience": "beginner",
+  "estimated_duration_hours": 40,
+  "prerequisites": [],
+  "lessons": [
+    {
+      "id": "lesson_01",
+      "title": "Cơ bản về Blockchain",
+      "description": "Tìm hiểu cách thức hoạt động của công nghệ blockchain, mật mã học cơ bản, cơ chế đồng thuận và các khái niệm sổ cái phân tán.",
+      "duration_minutes": 60,
+      "difficulty": "beginner",
+      "content_url": "/content/blockchain-basics",
+      "resources": [
+        "Sách trắng Bitcoin (Bitcoin Whitepaper) | https://bitcoin.org/bitcoin.pdf",
+        "Tài liệu cơ bản về Blockchain của Ethereum.org | https://ethereum.org/vi/developers/docs/intro-to-ethereum/"
+      ],
+      "quiz_questions": [
+        {
+          "question": "Mạng blockchain thực chất là gì?",
+          "options": [
+            "Một cơ sở dữ liệu tập trung được quản lý bởi ngân hàng",
+            "Một sổ cái phân tán được chia sẻ và đồng bộ giữa các nút mạng",
+            "Một hệ điều hành máy tính thế hệ mới",
+            "Một dịch vụ lưu trữ đám mây của các công ty công nghệ"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Nút (Node) trong mạng blockchain có vai trò gì?",
+          "options": [
+            "Chỉ dùng để kết nối internet cho máy tính của thợ đào",
+            "Lưu trữ bản sao sổ cái, xác thực giao dịch và duy trì mạng lưới",
+            "Thiết kế giao diện cho các ứng dụng phi tập trung",
+            "Chạy các quảng cáo trên mạng blockchain"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Cơ chế đồng thuận (Consensus Mechanism) giải quyết vấn đề gì trong hệ thống phi tập trung?",
+          "options": [
+            "Giảm phí giao dịch xuống bằng 0",
+            "Đảm bảo các nút mạng thống nhất về trạng thái dữ liệu mà không cần bên thứ ba tin cậy",
+            "Tăng tốc độ truy cập internet của các nút mạng",
+            "Ngăn chặn hoàn toàn việc người dùng gửi tin nhắn rác"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Hàm băm mã hóa (Cryptographic Hash Function) có đặc điểm nào sau đây?",
+          "options": [
+            "Là hàm hai chiều, có thể dễ dàng giải mã ngược lại dữ liệu gốc",
+            "Đầu ra luôn thay đổi độ dài tùy thuộc vào kích thước đầu vào",
+            "Là hàm một chiều, đầu ra có độ dài cố định và thay đổi nhỏ ở đầu vào sẽ làm thay đổi hoàn toàn đầu ra",
+            "Không bao giờ tạo ra cùng một kết quả băm cho cùng một đầu vào"
+          ],
+          "correct_answer": 2
+        },
+        {
+          "question": "Mỗi khối (Block) tiếp theo liên kết với khối trước đó trong blockchain như thế nào?",
+          "options": [
+            "Qua địa chỉ IP của khối trước đó",
+            "Chứa giá trị băm (hash) của khối trước đó",
+            "Sử dụng chung một khóa riêng tư (private key)",
+            "Liên kết thông qua số lượng Ether của khối đó"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Hệ thống sổ cái phân tán (Distributed Ledger) có ưu điểm bảo mật lớn nhất là gì?",
+          "options": [
+            "Không có điểm lỗi đơn lẻ (Single Point of Failure), dữ liệu cực kỳ khó bị giả mạo hoặc phá hủy",
+            "Giúp ẩn danh hoàn toàn danh tính người dùng và không thể bị theo vết",
+            "Không cần sử dụng bất kỳ thuật toán mật mã nào",
+            "Cho phép bất kỳ ai cũng có thể sửa đổi lịch sử giao dịch tùy ý"
+          ],
+          "correct_answer": 0
+        },
+        {
+          "question": "Trong mật mã học bất đối xứng của Blockchain, Khóa công khai (Public Key) và Khóa cá nhân (Private Key) được dùng như thế nào?",
+          "options": [
+            "Khóa công khai dùng để ký giao dịch, khóa cá nhân làm địa chỉ nhận tiền",
+            "Cả hai khóa đều dùng để chia sẻ công khai cho mọi người cùng biết",
+            "Khóa công khai làm địa chỉ nhận tiền, khóa cá nhân giữ bí mật để ký và xác thực giao dịch",
+            "Khóa cá nhân dùng để đào coin, khóa công khai dùng để thanh toán phí gas"
+          ],
+          "correct_answer": 2
+        },
+        {
+          "question": "Lỗi 'Double Spending' (Chi tiêu kép) là gì?",
+          "options": [
+            "Hành vi gửi tiền cho hai người khác nhau cùng một lúc",
+            "Hiện tượng một lượng tiền điện tử được sử dụng hai lần trong các giao dịch khác nhau thành công",
+            "Việc trả phí gas gấp đôi để giao dịch được thực hiện nhanh hơn",
+            "Việc rút tiền từ tài khoản ngân hàng ra ví blockchain"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Cơ chế đồng thuận Proof of Work (PoW) yêu cầu các thợ đào phải làm gì?",
+          "options": [
+            "Đặt cọc một số lượng coin nhất định vào hệ thống để lấy quyền xác thực",
+            "Giải một bài toán mã hóa phức tạp bằng năng lực tính toán của máy tính để tìm mã hash hợp lệ",
+            "Biểu quyết bằng cách bỏ phiếu công khai trên mạng xã hội",
+            "Đợi hệ thống lựa chọn ngẫu nhiên dựa trên thời gian hoạt động của nút"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Tại sao dữ liệu trên Blockchain được coi là không thể đảo ngược (Immutable)?",
+          "options": [
+            "Vì các giao dịch được lưu trữ bằng ổ cứng chống ghi",
+            "Vì muốn sửa đổi một khối cũ, kẻ tấn công phải sửa đổi toàn bộ các khối sau nó trên đa số các nút mạng",
+            "Vì chính phủ cấm việc chỉnh sửa dữ liệu blockchain",
+            "Vì các nút mạng đều sử dụng chung một tài khoản quản trị viên"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Hiện tượng 'Xung đột băm' (Hash Collision) trong mật mã học blockchain nghĩa là gì?",
+          "options": [
+            "Hai nút mạng cùng đào được một khối tại cùng một thời điểm",
+            "Hai chuỗi dữ liệu đầu vào khác nhau tạo ra cùng một kết quả băm đầu ra giống hệt nhau",
+            "Thợ đào thay đổi thuật toán băm giữa chừng",
+            "Giao dịch bị từ chối do phí băm quá thấp"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Cơ chế đồng thuận Proof of Stake (PoS - Bằng chứng cổ phần) bảo vệ mạng lưới bằng cách nào?",
+          "options": [
+            "Yêu cầu các nút mạng phải mua các máy đào đắt tiền nhất",
+            "Yêu cầu các nút mạng khóa/đặt cọc (stake) một lượng tiền mã hóa của mình để giành quyền xác thực khối",
+            "Bắt buộc người dùng phải trả toàn bộ phí giao dịch bằng tiền pháp định",
+            "Sử dụng một quản trị viên trung tâm để duyệt các giao dịch"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Công cụ 'Blockchain Explorer' (Trình khám phá Blockchain) dùng để làm gì?",
+          "options": [
+            "Để đào các đồng coin mới nhanh hơn",
+            "Để tìm kiếm và tra cứu công khai thông tin các khối, giao dịch, số dư địa chỉ ví trên blockchain",
+            "Để hack vào ví của người dùng khác",
+            "Để tạo ra các hợp đồng thông minh mới"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Đặc tính 'Byzantine Fault Tolerance' (Khả năng chịu lỗi Byzantine - BFT) của blockchain là gì?",
+          "options": [
+            "Khả năng hệ thống tự động khóa khi bị hacker tấn công",
+            "Khả năng mạng lưới vẫn hoạt động đúng đắn ngay cả khi một số nút bị lỗi hoặc cố tình gian lận dữ liệu",
+            "Cơ chế tự động hoàn lại tiền cho người dùng bị lừa đảo",
+            "Thuật toán mã hóa các tệp tin lưu trữ trên blockchain"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Cuộc tấn công '51% Attack' xảy ra khi nào?",
+          "options": [
+            "Khi hacker lấy được 51% khóa cá nhân của tất cả ví trên mạng",
+            "Khi một nhóm thợ đào hoặc nút mạng kiểm soát hơn 50% tổng năng lực tính toán (hashrate) hoặc lượng stake, cho phép họ đảo ngược giao dịch và chặn khối mới",
+            "Khi phí gas của giao dịch vượt quá 51% giá trị lượng tiền gửi đi",
+            "Khi hơn 51% số lượng hợp đồng thông minh trên mạng bị lỗi bảo mật"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Sự khác biệt lớn nhất giữa Public Blockchain (công khai) và Private Blockchain (riêng tư) là gì?",
+          "options": [
+            "Public Blockchain không sử dụng mật mã học, Private thì có",
+            "Public Blockchain cho phép bất kỳ ai cũng có thể tham gia đọc/ghi dữ liệu, trong khi Private Blockchain giới hạn quyền này cho một số đối tượng được cấp phép",
+            "Private Blockchain chạy nhanh gấp 1000 lần Public Blockchain",
+            "Public Blockchain chỉ dùng cho Bitcoin, Private Blockchain chỉ dùng cho Ethereum"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Trong nâng cấp blockchain, sự khác biệt giữa Hard Fork và Soft Fork là gì?",
+          "options": [
+            "Hard Fork tốn nhiều chi phí hơn Soft Fork",
+            "Hard Fork tạo ra một chuỗi mới hoàn toàn không tương thích ngược với chuỗi cũ, còn Soft Fork là bản cập nhật tương thích ngược",
+            "Soft Fork yêu cầu 100% thợ đào phải đổi máy đào mới",
+            "Hard Fork chỉ làm thay đổi giao diện ví của người dùng"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Hợp đồng thông minh được thực thi ở đâu trên mạng lưới blockchain?",
+          "options": [
+            "Chỉ thực thi trên máy tính của người tạo ra hợp đồng",
+            "Được chạy và xác thực đồng thời bởi tất cả các nút mạng (validators/miners) tham gia duy trì blockchain",
+            "Chỉ chạy trên các máy chủ đám mây của Amazon Web Services (AWS)",
+            "Chạy trên trình duyệt của người gửi giao dịch"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Sự khác biệt giữa Gas Price và Gas Limit khi gửi một giao dịch Ethereum là gì?",
+          "options": [
+            "Gas Price là lượng gas tối đa tiêu thụ, Gas Limit là phí gas tối thiểu",
+            "Gas Price là số tiền (Gwei) bạn sẵn sàng trả cho mỗi đơn vị gas, Gas Limit là lượng gas tối đa bạn cho phép giao dịch này sử dụng",
+            "Cả hai thông số này đều do thợ đào tự động áp đặt và người dùng không thể chỉnh sửa",
+            "Gas Limit chỉ áp dụng cho Smart Contract, Gas Price áp dụng cho chuyển tiền thường"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Tại sao việc lưu trữ trực tiếp các tệp tin dữ liệu lớn (hình ảnh, video) trên blockchain lại không khả thi?",
+          "options": [
+            "Vì các nút mạng không có đủ dung lượng ổ cứng",
+            "Vì phí gas để lưu trữ dữ liệu trực tiếp trên Storage của blockchain cực kỳ đắt đỏ và làm phình to sổ cái quá nhanh",
+            "Vì luật pháp quốc tế cấm lưu trữ hình ảnh trên blockchain",
+            "Vì blockchain chỉ hỗ trợ lưu trữ các con số nguyên dương"
+          ],
+          "correct_answer": 1
+        }
+      ]
+    },
+    {
+      "id": "lesson_02",
+      "title": "Smart Contracts 101",
+      "description": "Giới thiệu về hợp đồng thông minh trên Ethereum, ngôn ngữ Solidity, máy ảo EVM và quản lý gas.",
+      "duration_minutes": 75,
+      "difficulty": "beginner",
+      "content_url": "/content/smart-contracts",
+      "resources": [
+        "Tài liệu ngôn ngữ lập trình Solidity (Solidity Documentation) | https://docs.soliditylang.org/",
+        "Ethereum Virtual Machine (EVM) Deep Dive | https://ethereum.org/vi/developers/docs/evm/"
+      ],
+      "quiz_questions": [
+        {
+          "question": "Hợp đồng thông minh (Smart Contract) thực chất là gì?",
+          "options": [
+            "Một bản hợp đồng pháp lý bằng giấy được scan lên máy tính",
+            "Một chương trình máy tính tự động thực thi các điều khoản khi điều kiện được đáp ứng",
+            "Một ứng dụng trò chuyện bảo mật trên điện thoại",
+            "Một thuật toán đào tiền ảo nhanh hơn"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "EVM viết tắt của từ gì?",
+          "options": [
+            "Ethereum Value Machine",
+            "Ethereum Virtual Machine",
+            "Enterprise Validator Model",
+            "Ethereum Variable Manager"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Ngôn ngữ lập trình phổ biến nhất để viết smart contract trên Ethereum là gì?",
+          "options": [
+            "Python",
+            "JavaScript",
+            "Solidity",
+            "C++"
+          ],
+          "correct_answer": 2
+        },
+        {
+          "question": "Khái niệm 'Gas' trong mạng lưới Ethereum dùng để làm gì?",
+          "options": [
+            "Nhiên liệu để chạy các máy chủ vật lý của Ethereum",
+            "Phí thanh toán cho năng lực tính toán và không gian lưu trữ khi thực thi giao dịch",
+            "Một loại token khuyến mại tặng kèm khi mua ETH",
+            "Thời gian cần thiết để xác nhận một khối mới"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Từ khóa 'payable' được thêm vào hàm hoặc địa chỉ trong Solidity nhằm mục đích gì?",
+          "options": [
+            "Để đánh dấu hàm đó chỉ được gọi bởi chủ sở hữu contract",
+            "Cho phép hàm hoặc hợp đồng đó nhận Ether trực tiếp từ giao dịch",
+            "Để bắt buộc người gọi hàm phải trả toàn bộ phí gas",
+            "Để chuyển đổi hợp đồng thông minh thành một token ERC-20"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Biến trạng thái (State Variables) trong Solidity được lưu trữ ở vùng nhớ nào và có đặc điểm gì?",
+          "options": [
+            "Lưu ở Memory, sẽ bị xóa sạch sau khi thực thi xong hàm",
+            "Lưu ở Stack, giới hạn tối đa chỉ 1024 phần tử",
+            "Lưu ở Storage, được ghi vĩnh viễn trên blockchain và tốn nhiều gas nhất để thay đổi",
+            "Lưu ở Calldata, là vùng nhớ tạm thời chỉ cho phép đọc"
+          ],
+          "correct_answer": 2
+        },
+        {
+          "question": "Một hàm được khai báo với phạm vi hiển thị 'external' có đặc điểm gì?",
+          "options": [
+            "Chỉ có thể được gọi từ bên ngoài hợp đồng thông minh",
+            "Có thể gọi tự do từ cả trong lẫn ngoài hợp đồng thông minh",
+            "Chỉ có thể gọi từ các hợp đồng kế thừa nó",
+            "Không thể nhận bất kỳ tham số đầu vào nào"
+          ],
+          "correct_answer": 0
+        },
+        {
+          "question": "Hàm khai báo 'view' khác với hàm khai báo 'pure' trong Solidity ở điểm nào?",
+          "options": [
+            "Hàm view không đọc dữ liệu blockchain, hàm pure thì có",
+            "Hàm view có thể sửa đổi trạng thái, hàm pure chỉ được đọc",
+            "Hàm view đọc dữ liệu từ blockchain nhưng không ghi dữ liệu, hàm pure không đọc cũng không ghi dữ liệu",
+            "Cả hai hàm đều tốn phí gas như nhau khi gọi từ bên ngoài (read-only)"
+          ],
+          "correct_answer": 2
+        },
+        {
+          "question": "Hàm 'constructor' trong Solidity chạy vào thời điểm nào?",
+          "options": [
+            "Mỗi khi có người gọi đến hợp đồng",
+            "Chỉ chạy duy nhất một lần khi hợp đồng thông minh được triển khai (deploy)",
+            "Chạy tự động vào mỗi khối mới được đào",
+            "Chỉ chạy khi hợp đồng bị tự hủy (selfdestruct)"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Điểm khác biệt chính giữa từ khóa lưu trữ 'memory' và 'calldata' khi truyền tham số mảng/struct là gì?",
+          "options": [
+            "Calldata tốn nhiều gas hơn memory",
+            "Memory cho phép chỉnh sửa giá trị biến trong quá trình chạy hàm, còn calldata là chỉ đọc (read-only) và tiết kiệm gas hơn",
+            "Calldata lưu trữ dữ liệu vĩnh viễn trên blockchain, memory thì không",
+            "Không có sự khác biệt nào về mặt chức năng và chi phí gas"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Modifier trong Solidity được sử dụng nhằm mục đích gì?",
+          "options": [
+            "Để khai báo các biến lưu trữ mới",
+            "Để thay đổi hoặc bổ sung hành vi/kiểm tra điều kiện tiên quyết trước khi thực thi mã nguồn của hàm chính",
+            "Để nén mã bytecode giúp tiết kiệm gas khi deploy",
+            "Để kế thừa các thuộc tính của một hợp đồng thông minh khác"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Sự khác biệt chính giữa lệnh 'transfer()' và lệnh 'call()' khi thực hiện gửi Ether là gì?",
+          "options": [
+            "Transfer tốn nhiều gas hơn call",
+            "Transfer giới hạn cứng 2300 gas chuyển đi và tự động rollback khi lỗi; Call chuyển toàn bộ gas còn lại và trả về trạng thái boolean thành công/thất bại",
+            "Call chỉ gửi được token ERC-20, transfer chỉ gửi được Ether",
+            "Không có sự khác biệt, cả hai đều an toàn tuyệt đối trước reentrancy"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Hàm 'fallback()' chạy khi nào trong hợp đồng thông minh?",
+          "options": [
+            "Khi hợp đồng bị lỗi và tự động dừng hoạt động",
+            "Khi hợp đồng nhận Ether không kèm dữ liệu mà không khai báo receive(), hoặc khi có người gọi một hàm không tồn tại trong hợp đồng",
+            "Chỉ chạy khi chủ hợp đồng gọi lệnh rút tiền",
+            "Được gọi tự động khi phí gas mạng lưới xuống quá thấp"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Biến trạng thái khai báo với từ khóa 'constant' và 'immutable' khác nhau như thế nào?",
+          "options": [
+            "Constant tốn nhiều gas hơn khi gọi",
+            "Constant bắt buộc phải gán giá trị ngay khi khai báo; Immutable có thể gán giá trị một lần duy nhất bên trong hàm constructor",
+            "Immutable có thể thay đổi giá trị bất kỳ lúc nào, constant thì không",
+            "Constant lưu trữ ở vùng nhớ memory, còn immutable lưu trữ ở storage"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Lỗi 'Stack Too Deep' (Ngăn xếp quá sâu) xảy ra do giới hạn nào của máy ảo EVM?",
+          "options": [
+            "Do hợp đồng có kích thước bytecode vượt quá 24KB",
+            "EVM giới hạn tối đa chỉ cho phép truy cập sâu 16 biến cục bộ/tham số trong một phạm vi thực thi của hàm",
+            "Do hợp đồng sử dụng quá nhiều biến trạng thái Storage",
+            "Do giao dịch chạy vượt quá giới hạn gas của khối"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Đặc điểm nào sau đây là đúng đối với Thư viện (Library) trong Solidity?",
+          "options": [
+            "Có thể chứa các biến trạng thái và nhận được Ether bình thường",
+            "Không có biến trạng thái, không thể nhận Ether, và các hàm của nó được gọi bằng chỉ thị DELEGATECALL bảo toàn ngữ cảnh",
+            "Có thể tự hủy bằng hàm selfdestruct",
+            "Luôn bắt buộc phải triển khai cùng địa chỉ với hợp đồng chính"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Sự khác biệt cốt lõi giữa 'msg.sender' và 'tx.origin' là gì?",
+          "options": [
+            "msg.sender luôn là địa chỉ ví cá nhân (EOA), tx.origin có thể là hợp đồng",
+            "msg.sender là địa chỉ gọi trực tiếp hợp đồng hiện tại (có thể là ví hoặc contract); tx.origin là địa chỉ ví bắt đầu giao dịch đầu tiên tạo ra chuỗi cuộc gọi",
+            "tx.origin thay đổi qua các lời gọi hợp đồng trung gian, msg.sender thì giữ nguyên",
+            "Cả hai luôn luôn trả về cùng một địa chỉ trong mọi trường hợp"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Kiểu dữ liệu Enum (Enumeration) thực chất được biểu diễn dưới dạng kiểu dữ liệu nào bên dưới EVM?",
+          "options": [
+            "Kiểu chuỗi ký tự String",
+            "Số nguyên không âm uint8 (với giá trị mặc định đầu tiên là 0)",
+            "Kiểu địa chỉ Address",
+            "Mảng động các bytes"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Hành vi của hàm 'selfdestruct(address)' là gì?",
+          "options": [
+            "Tự động khóa toàn bộ số Ether trong hợp đồng và không cho ai rút",
+            "Xóa bytecode của hợp đồng khỏi blockchain và chuyển toàn bộ Ether còn lại sang địa chỉ được chỉ định",
+            "Tự động nhân đôi số dư của hợp đồng",
+            "Đóng băng tạm thời hợp đồng và tự động mở lại sau 24 giờ"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Sự kiện (Events) trong Solidity sau khi phát ra được lưu trữ ở đâu trên mạng lưới?",
+          "options": [
+            "Lưu ở biến trạng thái Storage và hợp đồng khác có thể đọc được",
+            "Lưu dưới dạng Nhật ký giao dịch (Transaction Logs) trên blockchain, hợp đồng thông minh khác không thể đọc được nhưng dApp bên ngoài có thể đọc",
+            "Lưu tạm thời ở vùng nhớ memory và bị xóa sau khi kết thúc giao dịch",
+            "Được lưu trực tiếp trên thiết bị cá nhân của người dùng gọi hàm"
+          ],
+          "correct_answer": 1
+        }
+      ]
+    },
+    {
+      "id": "lesson_03",
+      "title": "Common Vulnerabilities",
+      "description": "Nghiên cứu các lỗ hổng bảo mật kinh điển trong Solidity như Reentrancy, Overflow, Access Control, và tấn công Flash Loan.",
+      "duration_minutes": 90,
+      "difficulty": "beginner",
+      "content_url": "/content/vulnerabilities",
+      "resources": [
+        "OWASP Smart Contract Top 10 | https://owasp.org/www-project-smart-contract-top-10/",
+        "ConsenSys Smart Contract Security Best Practices | https://consensys.github.io/smart-contract-best-practices/"
+      ],
+      "quiz_questions": [
+        {
+          "question": "Lỗ hổng Reentrancy (Tái nhập/Gọi ngược) xảy ra khi nào?",
+          "options": [
+            "Khi hợp đồng thực hiện gửi Ether ra ngoài trước khi cập nhật lại trạng thái (như số dư của người dùng)",
+            "Khi người dùng gọi một hàm quá nhiều lần trong một giây",
+            "Khi hợp đồng bị tràn số do cộng hai số quá lớn",
+            "Khi thợ đào thay đổi thời gian tạo khối block.timestamp"
+          ],
+          "correct_answer": 0
+        },
+        {
+          "question": "Lỗi Integer Overflow/Underflow là gì?",
+          "options": [
+            "Số lượng Ether gửi đi vượt quá số dư hiện tại trong ví",
+            "Hiện tượng giá trị số vượt quá giới hạn lưu trữ tối đa (overflow) hoặc tối thiểu (underflow) của kiểu dữ liệu, khiến giá trị bị quay vòng",
+            "Lỗi xảy ra khi chia một số cho số 0 trong Solidity",
+            "Việc sử dụng quá nhiều vòng lặp for trong hàm"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Lỗ hổng Access Control (Kiểm soát truy cập) phổ biến nhất là gì?",
+          "options": [
+            "Hợp đồng không cho phép bất kỳ ai rút tiền",
+            "Thiếu các kiểm tra modifier (như onlyOwner) khiến người dùng thông thường có thể gọi các hàm quản trị quan trọng",
+            "Để lộ khóa cá nhân của người dùng trên giao diện web",
+            "Sử dụng thư viện SafeMath không đúng phiên bản"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Tại sao việc sử dụng 'tx.origin' để xác thực quyền chủ sở hữu (ví dụ: require(tx.origin == owner)) lại cực kỳ nguy hiểm?",
+          "options": [
+            "Vì tx.origin tốn nhiều gas hơn msg.sender",
+            "Vì kẻ tấn công có thể lừa owner tương tác với một hợp đồng trung gian độc hại, hợp đồng này sẽ thay mặt owner gọi và vượt qua kiểm tra quyền",
+            "Vì tx.origin không được EVM hỗ trợ nữa",
+            "Vì tx.origin luôn trả về địa chỉ của hợp đồng thay vì người dùng"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Bản chất của một cuộc tấn công Flash Loan (Vay nóng) là gì?",
+          "options": [
+            "Hacker vay tiền từ ngân hàng để mua Ether đi tấn công",
+            "Vay một lượng tiền mã hóa cực lớn không cần thế chấp, thực hiện hành vi tấn công (ví dụ thao túng giá oracle) và hoàn trả lại tiền trong cùng một giao dịch đơn lẻ",
+            "Hành vi chiếm đoạt ví của người khác để thực hiện các giao dịch rút tiền nhanh",
+            "Việc gửi nhiều giao dịch cùng lúc để làm nghẽn mạng lưới Ethereum"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Tấn công Front-running trên Blockchain hoạt động như thế nào?",
+          "options": [
+            "Hacker hack vào máy tính của thợ đào để thay đổi giao dịch",
+            "Kẻ tấn công theo dõi các giao dịch đang chờ trong Mempool, phát hiện giao dịch có lợi và gửi giao dịch tương tự với phí gas cao hơn để được ưu tiên thực thi trước",
+            "Gửi giao dịch vào ban đêm khi mạng lưới ít người sử dụng nhất",
+            "Tạo ra một blockchain mới để cạnh tranh với blockchain hiện tại"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Lỗ hổng Denial of Service (DoS) bằng cách block giao dịch (blocking transfer) thường xảy ra khi nào?",
+          "options": [
+            "Khi mạng Ethereum bị sập do mất điện",
+            "Khi hợp đồng lặp qua danh sách địa chỉ để gửi tiền (Push) và gặp một địa chỉ hợp đồng từ chối nhận tiền (fallback revert), làm toàn bộ giao dịch bị rollback",
+            "Khi người dùng nhập sai mật khẩu ví quá 3 lần",
+            "Khi hợp đồng bị cạn kiệt gas giữa chừng"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Tại sao việc sinh số ngẫu nhiên bằng cách sử dụng các thông tin như 'block.timestamp', 'block.difficulty' lại không an toàn?",
+          "options": [
+            "Vì các thông tin này quá khó để tính toán trên EVM",
+            "Vì thợ đào (miners/validators) có quyền kiểm soát hoặc điều chỉnh nhẹ các thông số này để thao túng kết quả ngẫu nhiên có lợi cho họ",
+            "Vì phí gas để đọc các thông tin này quá đắt",
+            "Vì các giá trị này không thay đổi giữa các khối"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Từ khóa 'delegatecall' hoạt động như thế nào và tại sao nó lại nguy hiểm nếu không được kiểm soát?",
+          "options": [
+            "Nó chạy mã nguồn ở hợp đồng đích nhưng lưu trữ thay đổi trên bộ nhớ của hợp đồng đích",
+            "Nó thực thi mã nguồn của hợp đồng đích bằng ngữ cảnh (Context: Storage, msg.sender, msg.value) của hợp đồng gọi, cho phép hợp đồng đích ghi đè lên Storage của hợp đồng gọi",
+            "Nó chỉ dùng để gửi tiền và tự động hủy hợp đồng khi gặp lỗi",
+            "Nó ngăn chặn mọi cuộc tấn công Reentrancy vào hợp đồng"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Tấn công Signature Replay (Chạy lại chữ ký) là gì?",
+          "options": [
+            "Hành vi sao chép khóa cá nhân của người dùng để tự ký giao dịch mới",
+            "Kẻ tấn công lấy một chữ ký hợp lệ đã được sử dụng trước đó và gửi lại nó lên hợp đồng để thực hiện lại hành vi (ví dụ: rút tiền nhiều lần) do hợp đồng thiếu kiểm tra nonce",
+            "Việc gửi một chữ ký giả mạo được tạo ngẫu nhiên",
+            "Việc sử dụng chữ ký của mạng Bitcoin trên mạng Ethereum"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Kể từ phiên bản Solidity nào lỗi tràn số Integer Overflow/Underflow được tự động kiểm tra và revert mà không cần SafeMath?",
+          "options": [
+            "Solidity 0.6.0",
+            "Solidity 0.7.0",
+            "Solidity 0.8.0",
+            "Solidity 0.9.0"
+          ],
+          "correct_answer": 2
+        },
+        {
+          "question": "Lỗ hổng Reentrancy chỉ có thể xảy ra khi nào?",
+          "options": [
+            "Khi hợp đồng chỉ giao tiếp nội bộ không tương tác bên ngoài",
+            "Khi hợp đồng thực hiện lệnh gọi bên ngoài (external call) đến địa chỉ người nhận trước khi cập nhật các biến trạng thái",
+            "Khi hợp đồng có kích thước file quá lớn",
+            "Khi người dùng gửi giao dịch sai chữ ký"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Lỗ hổng Phụ thuộc vào dòng thời gian (Timestamp Dependence) nghĩa là gì?",
+          "options": [
+            "Giao dịch mất quá nhiều thời gian để được đóng khối",
+            "Hợp đồng sử dụng block.timestamp cho các quyết định quan trọng (như phát thưởng ngẫu nhiên) và bị thợ đào thao túng lệch thời gian block",
+            "Hợp đồng bị lỗi khi chuyển múi giờ",
+            "Hệ thống bị sập vào ngày cuối cùng của năm"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Tấn công DoS bằng cách chặn giới hạn Gas của khối (Block Gas Limit DoS) xảy ra khi nào?",
+          "options": [
+            "Mạng lưới Ethereum tăng giá gas quá cao",
+            "Hợp đồng thực hiện vòng lặp qua một mảng động có kích thước quá lớn, làm tiêu tốn lượng gas vượt mức cho phép tối đa của một block và giao dịch luôn bị thất bại",
+            "Người dùng cố tình spam giao dịch không trả phí gas",
+            "Khi hợp đồng thực thi lệnh selfdestruct nhiều lần"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Tấn công Thao túng Oracle (Oracle Manipulation) nhằm mục đích gì?",
+          "options": [
+            "Hack vào máy chủ của các bên cung cấp dữ liệu như Chainlink",
+            "Sử dụng nguồn vốn lớn thao túng tạm thời giá của token trên các bể thanh khoản sàn DEX để trục lợi từ các hợp đồng Lending định giá dựa trên bể đó",
+            "Đảo ngược giao dịch của người khác trên mempool",
+            "Làm cạn kiệt gas của hợp đồng thông minh"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Rủi ro bảo mật của việc bỏ qua kiểm tra kết quả trả về của lệnh gọi ngoài (Unchecked Return Values) là gì?",
+          "options": [
+            "Phí gas của giao dịch sẽ tự động tăng lên",
+            "Hành động gọi bên ngoài bị thất bại (revert) nhưng hợp đồng chính vẫn tiếp tục chạy tiếp các dòng lệnh sau như thể đã thành công",
+            "Hợp đồng tự động bị chuyển quyền admin cho hacker",
+            "Không thể biên dịch được mã nguồn Solidity"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Hình thức tấn công 'Block Stuffing' hoạt động như thế nào?",
+          "options": [
+            "Hacker chèn virus độc hại vào bên trong khối blockchain",
+            "Kẻ tấn công gửi liên tục nhiều giao dịch trả phí gas rất cao để chiếm trọn không gian của các khối tiếp theo, ngăn cản các giao dịch của nạn nhân được xác nhận đúng hạn",
+            "Tự động tăng kích thước khối lên gấp đôi để làm chậm mạng",
+            "Tấn công từ chối dịch vụ vào máy tính cá nhân của thợ đào"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Mối nguy hiểm của lỗ hổng 'Private Data Exposure' trong Solidity là gì?",
+          "options": [
+            "Mọi người dùng đều có thể thay đổi giá trị của biến private",
+            "Mặc dù biến khai báo 'private' ngăn các hợp đồng khác đọc trực tiếp trên chain, nhưng mọi dữ liệu lưu trên blockchain đều là công khai và bất kỳ ai cũng đọc được bằng cách quét Storage",
+            "Hàm private có thể bị gọi tự do bởi hacker",
+            "Làm rò rỉ khóa cá nhân của ví người gọi hàm"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Tấn công lừa đảo Phishing sử dụng lỗ hổng 'tx.origin' được thực hiện như thế nào?",
+          "options": [
+            "Hacker giả mạo email của dự án gửi cho người dùng",
+            "Hacker tạo ra một hợp đồng bẫy và lừa Owner của hợp đồng đích tương tác với nó, hợp đồng bẫy này sẽ gọi lệnh rút tiền từ hợp đồng đích và vượt qua kiểm tra tx.origin",
+            "Hacker đoán mật khẩu ví MetaMask của admin",
+            "Hacker thay đổi địa chỉ ví nhận tiền trên giao diện web"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Lỗ hổng 'Unprotected Selfdestruct' (Tự hủy hợp đồng không bảo vệ) nguy hiểm như thế nào?",
+          "options": [
+            "Làm tăng phí gas của hợp đồng lên vô hạn",
+            "Bất kỳ ai cũng có thể gọi hàm chứa selfdestruct để phá hủy hợp đồng thông minh vĩnh viễn và lấy đi toàn bộ số Ether đang có",
+            "Làm sai lệch số dư của toàn bộ mạng lưới",
+            "Hợp đồng tự động biến đổi thành một token giả mạo"
+          ],
+          "correct_answer": 1
+        }
+      ]
+    },
+    {
+      "id": "lesson_04",
+      "title": "Security Best Practices",
+      "description": "Các mô hình thiết kế bảo mật chuẩn, quy tắc Checks-Effects-Interactions, thiết kế rút tiền (Pull over Push) và các thư viện bảo mật.",
+      "duration_minutes": 120,
+      "difficulty": "intermediate",
+      "content_url": "/content/best-practices",
+      "resources": [
+        "Thư viện hợp đồng thông minh OpenZeppelin Contracts | https://openzeppelin.com/contracts/",
+        "Sách hướng dẫn bảo mật Solidity (Solidity Security Patterns) | https://github.com/Consensys/smart-contract-best-practices"
+      ],
+      "quiz_questions": [
+        {
+          "question": "Quy tắc thiết kế 'Checks-Effects-Interactions' khuyên chúng ta thực hiện các bước theo thứ tự nào?",
+          "options": [
+            "Tương tác bên ngoài (Interactions) -> Kiểm tra điều kiện (Checks) -> Thay đổi trạng thái (Effects)",
+            "Kiểm tra điều kiện (Checks) -> Thay đổi trạng thái/cập nhật số dư (Effects) -> Tương tác/gửi tiền ra ngoài (Interactions)",
+            "Thay đổi trạng thái (Effects) -> Tương tác bên ngoài (Interactions) -> Kiểm tra điều kiện (Checks)",
+            "Không quan trọng thứ tự, miễn là viết đầy đủ cả 3 bước"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Mẫu thiết kế 'Pull over Push' (Rút tiền thay vì gửi tiền) giải quyết vấn đề gì?",
+          "options": [
+            "Giảm thời gian xử lý giao dịch của mạng lưới",
+            "Ngăn chặn tấn công Từ chối dịch vụ (DoS) bằng cách để người dùng tự thực hiện giao dịch rút tiền (Pull) thay vị hợp đồng tự động gửi tiền hàng loạt (Push)",
+            "Tiết kiệm gas cho chủ sở hữu hợp đồng khi triển khai dự án",
+            "Tự động khóa hợp đồng khi phát hiện có hacker truy cập"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Tại sao việc sử dụng thư viện SafeMath của OpenZeppelin lại cần thiết trong các phiên bản Solidity cũ hơn 0.8.0?",
+          "options": [
+            "Để tăng tốc độ thực thi mã nguồn trên máy ảo EVM",
+            "Để tự động kiểm tra và revert giao dịch nếu xảy ra lỗi tràn số (overflow/underflow) trong các phép tính toán học",
+            "Để mã hóa dữ liệu nhạy cảm trước khi lưu lên blockchain",
+            "Để tự động chuyển đổi định dạng tiền tệ từ Wei sang Ether"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Thư viện 'Ownable' của OpenZeppelin cung cấp modifier 'onlyOwner' nhằm mục đích gì?",
+          "options": [
+            "Để chỉ cho phép những người đã mua token được gọi hàm",
+            "Để hạn chế quyền thực thi hàm, chỉ cho phép địa chỉ của chủ sở hữu (Owner) hợp đồng gọi hàm đó",
+            "Để tự động hủy hợp đồng thông minh khi chủ sở hữu muốn",
+            "Để ẩn mã nguồn hợp đồng thông minh khỏi các công cụ quét mã độc"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Cơ chế 'Circuit Breaker' (Cầu chì/Tạm dừng) trong smart contract là gì?",
+          "options": [
+            "Thiết bị phần cứng gắn vào máy đào để ngắt điện khi quá tải",
+            "Khả năng cho phép quản trị viên tạm dừng các chức năng quan trọng (như nạp/rút tiền) của hợp đồng thông minh khi phát hiện sự cố bảo mật",
+            "Thuật toán tự động xóa toàn bộ số dư của hacker",
+            "Một lỗi lập trình làm treo hợp đồng thông minh vĩnh viễn"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Tại sao việc nâng cấp Smart Contract bằng mô hình Proxy lại cần hết sức cẩn thận?",
+          "options": [
+            "Vì việc nâng cấp tốn quá nhiều chi phí triển khai",
+            "Vì smart contract đã deploy là không thể thay đổi, mô hình Proxy lách luật bằng cách chuyển tiếp cuộc gọi và rất dễ gặp lỗi xung đột Storage (Storage collision)",
+            "Vì Proxy không được hỗ trợ bởi các ví cá nhân như Metamask",
+            "Vì nâng cấp Proxy sẽ làm giảm tốc độ xử lý giao dịch đi 10 lần"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Thời điểm tốt nhất để thực hiện Audit (Kiểm toán bảo mật) độc lập cho Smart Contract là khi nào?",
+          "options": [
+            "Sau khi đã deploy lên mạng chính thức (Mainnet) được 1 tháng",
+            "Sau khi hoàn thành viết mã nguồn, kiểm thử kỹ càng trên Testnet và trước khi deploy lên Mainnet",
+            "Ngay khi vừa viết xong bản phác thảo ý tưởng trên giấy",
+            "Khi phát hiện dự án bị hacker tấn công rút hết tiền"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Việc ghi lại các Event (Sự kiện) trong Solidity đóng vai trò gì trong bảo mật hệ thống?",
+          "options": [
+            "Giảm chi phí gas khi thực thi các thay đổi trạng thái",
+            "Giúp lưu lại nhật ký hoạt động trên blockchain để các hệ thống giám sát (monitoring) bên ngoài có thể theo dõi và cảnh báo hành vi bất thường",
+            "Dùng để thay thế hoàn toàn việc lưu trữ biến trong Storage",
+            "Ngăn chặn các công cụ scan tự động tìm ra lỗ hổng"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Tại sao các chuyên gia khuyên nên tránh sử dụng lệnh 'transfer()' và 'send()' để gửi Ether trong Solidity hiện đại?",
+          "options": [
+            "Vì chúng tốn quá nhiều gas so với các lệnh khác",
+            "Vì chúng giới hạn cứng mức gas chuyển đi là 2300, điều này sẽ gây lỗi nếu hợp đồng nhận tiền là một ví đa chữ ký hoặc có logic nhận phức tạp tốn nhiều gas hơn",
+            "Vì hai lệnh này đã hoàn toàn bị xóa bỏ khỏi ngôn ngữ Solidity",
+            "Vì chúng tự động tiết lộ khóa cá nhân của người gửi"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Cách gửi Ether được khuyến nghị an toàn nhất hiện nay trong Solidity là gì?",
+          "options": [
+            "Sử dụng address.transfer(amount)",
+            "Sử dụng address.send(amount)",
+            "Sử dụng hàm call kèm theo kiểm tra kết quả trả về: (bool success, ) = to.call{value: amount}(\"\")",
+            "Sử dụng thư viện SafeMath để cộng trực tiếp số dư"
+          ],
+          "correct_answer": 2
+        },
+        {
+          "question": "Khi thiết kế hợp đồng nâng cấp (Upgradable Smart Contract), mô hình nào sau đây thường được khuyên dùng hơn vì tiết kiệm gas và an toàn hơn?",
+          "options": [
+            "Transparent Proxy Pattern",
+            "UUPS (Universal Upgradeable Proxy Standard)",
+            "Hợp đồng tĩnh thông thường (không nâng cấp)",
+            "Mô hình lưu trữ dữ liệu tập trung ở một máy chủ"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Mẫu thiết kế 'Checks-Effects-Interactions' giúp phòng chống hiệu quả nhất loại hình tấn công nào?",
+          "options": [
+            "Tấn công từ chối dịch vụ DoS",
+            "Tấn công Reentrancy (Tái nhập/Gọi ngược)",
+            "Tấn công thao túng Oracle",
+            "Tấn công tràn số Arithmetic Overflow"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Tại sao việc đưa trực tiếp Khóa riêng tư (Private Keys) vào mã nguồn hoặc lưu trữ trong các file config rồi đẩy lên GitHub công khai lại cực kỳ nguy hại?",
+          "options": [
+            "Làm tăng kích thước của mã nguồn",
+            "Kẻ xấu sử dụng bot tự động quét liên tục các repository GitHub và sẽ lập tức rút hết tiền của ví đó trong vài giây",
+            "Không thể triển khai được hợp đồng lên mạng chính thức",
+            "Hệ thống kiểm duyệt của GitHub sẽ tự động khóa tài khoản"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Công cụ phân tích tĩnh 'Slither' hoạt động như thế nào để cải thiện bảo mật?",
+          "options": [
+            "Tự động chạy thử nghiệm gửi tiền giả lập lên hợp đồng",
+            "Quét và phân tích mã nguồn Solidity tĩnh không cần thực thi, để chỉ ra các điểm vi phạm quy tắc bảo mật như reentrancy, sai phân quyền, biến chưa dùng",
+            "Ngăn chặn hacker gửi các giao dịch độc hại lên blockchain",
+            "Tự động viết lại toàn bộ mã nguồn hợp đồng thông minh"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Thuật ngữ 'Bug Bounty' (Săn lỗi nhận thưởng) trong ngành Blockchain nghĩa là gì?",
+          "options": [
+            "Chương trình trả phí gas rẻ hơn cho các lập trình viên",
+            "Dự án công khai thưởng tiền cho các hacker mũ trắng phát hiện và báo cáo thành công các lỗi bảo mật của dự án trước khi kẻ xấu phá hoại",
+            "Giải đấu thi thố lập trình nhanh các hợp đồng thông minh",
+            "Các khoản phạt tiền đối với lập trình viên viết code bị lỗi"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Tại sao việc giới hạn quyền Admin bằng cơ chế 'Multisig' (Ví đa chữ ký) lại rất quan trọng?",
+          "options": [
+            "Để tiết kiệm gas hơn khi ký các giao dịch thông thường",
+            "Loại bỏ điểm yếu một khóa duy nhất (Single Point of Failure), ngăn chặn nguy cơ dự án bị sụp đổ hoặc bị admin chiếm đoạt tiền nếu một khóa quản trị bị lộ",
+            "Để tự động ẩn danh địa chỉ của người quản trị dự án",
+            "Bắt buộc tất cả người dùng trong hệ thống phải đồng ý trước khi chuyển tiền"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Khái niệm 'Time-lock' (Khóa thời gian) trong quản trị dự án blockchain là gì?",
+          "options": [
+            "Cơ chế tự động dừng hoạt động của hợp đồng vào ban đêm",
+            "Cơ chế trì hoãn bắt buộc các giao dịch quan trọng (như nâng cấp contract, rút quỹ lớn) trong một khoảng thời gian (ví dụ 48 tiếng) để cộng đồng kịp phản ứng",
+            "Thời gian giới hạn để hoàn thành một bài trắc nghiệm",
+            "Việc thợ đào khóa các giao dịch lại không cho đóng khối"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Tài liệu đặc tả kỹ thuật (Specification) hỗ trợ gì cho quá trình kiểm toán (Audit) bảo mật?",
+          "options": [
+            "Dùng để nộp cho cơ quan thuế khi dự án ra mắt",
+            "Giúp kiểm toán viên hiểu rõ chức năng thiết kế logic mong muốn của dự án, nhằm phát hiện sự sai lệch giữa ý đồ thiết kế và mã code Solidity thực tế",
+            "Dùng để quảng cáo dự án thu hút nhà đầu tư",
+            "Bắt buộc phải có để deploy hợp đồng thông minh lên EVM"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Kỹ thuật 'Fuzzing' trong kiểm thử smart contract hoạt động như thế nào?",
+          "options": [
+            "Chạy thử nghiệm thủ công bởi hàng trăm lập trình viên",
+            "Công cụ tự động đưa vào hàng triệu dữ liệu đầu vào ngẫu nhiên, bất thường vào hợp đồng để tìm các trường hợp biên làm sập hoặc vi phạm tính bất biến (invariant)",
+            "Quét tìm mã độc bên trong máy tính lập trình viên",
+            "Kiểm tra xem trang web của dự án có bị quá tải băng thông hay không"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Thư viện 'ReentrancyGuard' của OpenZeppelin bảo vệ hợp đồng thông minh bằng cách nào?",
+          "options": [
+            "Tự động revert toàn bộ các giao dịch từ các địa chỉ lạ",
+            "Cung cấp modifier 'nonReentrant' sử dụng một khóa trạng thái tạm thời, ngăn chặn việc gọi đệ quy ngược trở lại vào cùng một hàm hoặc nhóm hàm trong một giao dịch",
+            "Giảm thời gian xử lý giao dịch gửi tiền",
+            "Mã hóa địa chỉ ví của người gọi hàm"
+          ],
+          "correct_answer": 1
+        }
+      ]
+    },
+    {
+      "id": "lesson_05",
+      "title": "Hands-on: Code Analysis",
+      "description": "Thực hành phân tích các đoạn mã Solidity thực tế, phát hiện lỗi bảo mật và đưa ra phương án sửa đổi tối ưu.",
+      "duration_minutes": 150,
+      "difficulty": "intermediate",
+      "content_url": "/content/code-analysis",
+      "resources": [
+        "Bài tập thực hành bảo mật Ethernaut | https://ethernaut.openzeppelin.com/",
+        "Học thử thách hack DeFi: Damn Vulnerable DeFi | https://www.damnvulnerabledefi.xyz/",
+        "Công cụ phân tích tĩnh Slither | https://github.com/crytic/slither"
+      ],
+      "quiz_questions": [
+        {
+          "question": "Phân tích đoạn mã sau: `msg.sender.call{value: bal}(\"\"); balances[msg.sender] = 0;`. Đoạn mã này mắc lỗi bảo mật gì?",
+          "options": [
+            "Lỗi tràn số Integer Overflow",
+            "Lỗ hổng Reentrancy (Tái nhập) vì gửi Ether trước khi đưa số dư ví về 0",
+            "Lỗi kiểm soát quyền truy cập Access Control",
+            "Không có lỗi nào, đoạn mã hoạt động hoàn toàn chính xác"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Nếu một hàm rút tiền quan trọng `function withdrawAll() public {}` không sử dụng bất kỳ modifier hay kiểm tra điều kiện nào, hậu quả là gì?",
+          "options": [
+            "Chỉ có chủ sở hữu contract rút được tiền",
+            "Bất kỳ ai gọi hàm này cũng đều rút được toàn bộ số tiền có trong hợp đồng thông minh",
+            "Giao dịch sẽ luôn bị revert do thiếu gas",
+            "Hợp đồng tự động chuyển toàn bộ tiền vào ví của người tạo"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Trong Solidity phiên bản 0.7.0, phép tính `balances[to] += amount;` có nguy cơ gì nếu không dùng SafeMath?",
+          "options": [
+            "Nguy cơ bị tấn công Reentrancy",
+            "Nguy cơ bị tràn số (Integer Overflow) nếu kết quả cộng vượt quá giá trị tối đa của kiểu dữ liệu, làm số dư bị reset về 0 hoặc một số rất nhỏ",
+            "Nguy cơ bị lộ thông tin số dư của người dùng",
+            "Lỗi biên dịch vì cú pháp không được hỗ trợ"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Hợp đồng thông minh sử dụng dòng mã `require(tx.origin == owner);` để xác thực quyền admin. Hacker làm thế nào để rút tiền nếu họ có một hợp đồng tấn công?",
+          "options": [
+            "Hacker không thể phá được vì kiểm tra tx.origin là tuyệt đối an toàn",
+            "Dụ dỗ chủ sở hữu (owner) tương tác/gọi một hàm trên hợp đồng độc hại của hacker, hợp đồng đó sẽ gọi sang contract này và vượt qua kiểm tra do tx.origin vẫn là địa chỉ ví owner",
+            "Sử dụng cuộc tấn công Reentrancy gọi ngược vào hàm rút tiền",
+            "Chạy mã độc trên máy tính của owner để lấy trộm khóa cá nhân"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Phân tích dòng mã: `for (uint i = 0; i < users.length; i++) { payUser(users[i]); }`. Rủi ro lớn nhất ở đây là gì nếu mảng `users` tăng lên rất lớn?",
+          "options": [
+            "Mất quá nhiều thời gian để chạy và có thể vượt quá giới hạn Gas của block (Block Gas Limit) khiến giao dịch luôn bị rollback (DoS)",
+            "Mảng users sẽ tự động bị xóa sạch dữ liệu",
+            "Hacker có thể thay đổi thứ tự các phần tử trong mảng",
+            "Số lượng Ether gửi đi sẽ tự động tăng gấp đôi"
+          ],
+          "correct_answer": 0
+        },
+        {
+          "question": "Một hàm thay đổi admin được viết như sau: `function setOwner(address _owner) public { owner = _owner; }`. Thiếu sót nghiêm trọng nhất của hàm này là gì?",
+          "options": [
+            "Tên hàm viết không đúng chuẩn CamelCase",
+            "Thiếu modifier kiểm tra quyền hạn (như onlyOwner), cho phép bất kỳ ai cũng có thể gọi hàm để tự phong mình làm owner",
+            "Không trả về giá trị kiểu boolean",
+            "Tham số đầu vào phải là kiểu string thay vì address"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Hợp đồng thông minh của bạn có hàm `receive() external payable {}` trống. Bạn cần lưu ý điều gì về mặt bảo mật?",
+          "options": [
+            "Hợp đồng này không bao giờ có thể nhận được Ether từ bất kỳ ai",
+            "Hợp đồng cho phép nhận Ether tự do, bạn cần đảm bảo viết thêm hàm rút tiền (withdraw) để tránh Ether bị khóa chết bên trong hợp đồng",
+            "Hợp đồng sẽ tự động bị hủy nếu nhận quá 10 Ether",
+            "Đây là lỗ hổng bảo mật nghiêm trọng làm lộ khóa cá nhân của hợp đồng"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Khi thiết kế hệ thống xác thực chữ ký (Signature Verification), việc lưu trữ danh sách chữ ký đã dùng hoặc sử dụng số 'nonce' có tác dụng gì?",
+          "options": [
+            "Để tính toán phí gas chính xác hơn",
+            "Để ngăn chặn tấn công Signature Replay (sử dụng lại chữ ký cũ để thực hiện lại hành vi giao dịch)",
+            "Để hiển thị lịch sử ký trên giao diện web",
+            "Để chứng minh hợp đồng thông minh đã được audit"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Dòng lệnh `selfdestruct(payable(attacker))` trong một hợp đồng đích có thể được hacker lợi dụng như thế nào chống lại hợp đồng khác?",
+          "options": [
+            "Để đọc trộm các biến private của hợp đồng khác",
+            "Để ép buộc gửi Ether vào một hợp đồng khác (ngay cả khi hợp đồng đó không có hàm payable/receive), nhằm phá vỡ các logic kiểm tra số dư nghiêm ngặt dựa trên address(this).balance",
+            "Để xóa sạch lịch sử giao dịch của hacker trên mạng lưới",
+            "Để khóa quyền truy cập của toàn bộ người dùng vào blockchain"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Tại sao việc viết các bài kiểm thử Unit Tests và chạy kiểm thử hộp đen/hộp trắng lại cực kỳ quan trọng cho bảo mật trước khi deploy?",
+          "options": [
+            "Vì nó là yêu cầu bắt buộc của thợ đào để chấp nhận khối",
+            "Giúp phát hiện sớm các lỗi logic, trường hợp biên (edge cases) và đảm bảo các hàm bảo vệ (modifiers) hoạt động đúng như thiết kế",
+            "Giúp hợp đồng chạy tiết kiệm gas hơn 50%",
+            "Để tự động xuất ra tài liệu hướng dẫn sử dụng cho người dùng"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Phân tích đoạn mã: `function claimRefund() public { uint amount = balances[msg.sender]; msg.sender.transfer(amount); balances[msg.sender] = 0; }`. Đoạn code này có bị lỗi Reentrancy không?",
+          "options": [
+            "Có, vì cập nhật số dư sau khi chuyển tiền",
+            "Không, vì lệnh transfer giới hạn lượng gas chuyển đi là 2300, hacker không đủ gas để gọi đệ quy ngược lại",
+            "Có, vì hacker có thể thay đổi phí gas của mạng lưới",
+            "Hợp đồng sẽ tự động bị đóng băng do lỗi cú pháp"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Đoạn code: `function executeTransaction(address target, bytes memory data) public { target.call(data); }`. Lỗ hổng nghiêm trọng ở đây là gì?",
+          "options": [
+            "Không cho phép truyền tham số dạng bytes",
+            "Hợp đồng cho phép bất kỳ ai cũng có thể thực hiện gọi các hàm tùy ý (Arbitrary Call) đại diện cho hợp đồng này",
+            "Hàm call tốn quá nhiều gas",
+            "Hợp đồng tự động bị hacker rút hết tiền mà không cần gọi hàm"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Phân tích modifier sau: `modifier onlyAdmin { require(msg.sender == admin); _; }`. Nếu admin chưa được khởi tạo (địa chỉ mặc định là address(0)), hậu quả là gì?",
+          "options": [
+            "Chỉ có admin mới gọi được hàm",
+            "Bất kỳ ai cũng có thể gọi hàm nếu họ truyền vào msg.sender là địa chỉ rỗng address(0)",
+            "Không ai có thể gọi được các hàm được đính modifier này",
+            "Hợp đồng sẽ bị biên dịch lỗi"
+          ],
+          "correct_answer": 2
+        },
+        {
+          "question": "Đoạn code: `uint public price = 1 ether; function buy() public payable { require(msg.value == price); }`. Lỗi thiết kế ở đây là gì?",
+          "options": [
+            "Không cho phép mua nhiều lần",
+            "Hợp đồng không có cơ chế hoàn trả tiền thừa nếu người dùng gửi nhiều hơn giá quy định",
+            "Giá 1 ether là quá đắt đỏ",
+            "Thiếu modifier onlyOwner để phân quyền"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Đoạn code: `mapping(address => bool) signed; function claim(bytes32 hash, bytes memory sig) public { address signer = recover(hash, sig); require(signer == owner); signed[signer] = true; }`. Hãy chỉ ra lỗ hổng ở đây.",
+          "options": [
+            "Hàm recover tốn quá nhiều gas",
+            "Lỗ hổng Signature Replay: Chữ ký giống nhau có thể được hacker gửi nhiều lần do hợp đồng không kiểm tra số nonce hoặc id giao dịch để đánh dấu chữ ký đơn lẻ",
+            "Chữ ký không được mã hóa trước khi gửi lên blockchain",
+            "Chỉ có owner mới gửi được chữ ký hợp lệ"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Trong Solidity 0.7.0, đoạn code: `function transfer(address to, uint val) public { require(balances[msg.sender] - val >= 0); ... }` gặp rủi ro gì?",
+          "options": [
+            "Nguy cơ bị tấn công Reentrancy khi gửi tiền",
+            "Rủi ro Underflow: Nếu số dư nhỏ hơn val, phép trừ sẽ bị tràn số ngược tạo ra một số nguyên cực lớn và luôn vượt qua kiểm tra require",
+            "Lệnh require tốn quá nhiều gas",
+            "Solidity 0.7.0 không hỗ trợ phép toán trừ thông thường"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Đoạn code khởi tạo: `function initialize() public { owner = msg.sender; }` trong một hợp đồng triển khai theo dạng nâng cấp (Proxy) thiếu sót gì?",
+          "options": [
+            "Thiếu kiểu dữ liệu trả về",
+            "Thiếu modifier 'initializer' để ngăn chặn kẻ xấu gọi lại hàm này lần thứ hai nhằm chiếm quyền Owner của dự án",
+            "Không được khai báo là public",
+            "Hàm initialize chỉ được viết trong constructor"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Đoạn code: `function sendBonus(address user) public { balances[user] += 10; }`. Ai là người có thể tự động cộng điểm cho ví của mình?",
+          "options": [
+            "Chỉ có admin của hợp đồng",
+            "Bất kỳ ai cũng có thể gọi hàm public này để tự cộng điểm cho tài khoản của mình do thiếu modifier kiểm tra quyền hạn",
+            "Chỉ có những người dùng có số dư lớn hơn 0",
+            "Hệ thống tự động cộng điểm ngẫu nhiên"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Phân tích đoạn code: `fallback() external payable { address target = masterCopy; assembly { calldatacopy(0, 0, calldatasize()) let r := delegatecall(gas(), target, 0, calldatasize(), 0, 0) } }`. Đoạn code assembly này dùng để làm gì?",
+          "options": [
+            "Dùng để phá hủy hợp đồng thông minh khi gặp lỗi",
+            "Dùng trong mẫu thiết kế Proxy để chuyển tiếp tất cả các yêu cầu gọi hàm đến hợp đồng logic chính (`masterCopy`)",
+            "Dùng để mã hóa các giao dịch nhận tiền",
+            "Dùng để từ chối tất cả các giao dịch gửi Ether trực tiếp"
+          ],
+          "correct_answer": 1
+        },
+        {
+          "question": "Phân tích đoạn code: `function kill() public { selfdestruct(payable(msg.sender)); }`. Chuyện gì xảy ra nếu hacker gọi hàm này?",
+          "options": [
+            "Hợp đồng sẽ tự động nâng cấp lên phiên bản mới",
+            "Hợp đồng sẽ bị xóa sổ khỏi blockchain và toàn bộ số tiền Ether đang lưu trữ trong hợp đồng sẽ bị chuyển vào ví của hacker",
+            "Ví của hacker sẽ bị đóng băng vĩnh viễn",
+            "Không có gì xảy ra vì hàm selfdestruct chỉ chạy được bởi admin"
+          ],
+          "correct_answer": 1
+        }
+      ]
+    }
+  ]
+}

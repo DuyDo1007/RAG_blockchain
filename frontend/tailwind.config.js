@@ -4,10 +4,22 @@ export default {
     extend: {
       colors: {
         cyber: {
-          deep: '#0a0e1a',
-          surface: '#111827',
-          card: '#1e293b',
+          deep: 'var(--bg-deep)',
+          surface: 'var(--bg-surface)',
+          card: 'var(--bg-card)',
         },
+        vault: {
+          gold: 'var(--accent-gold)',
+          mint: 'var(--accent-mint)',
+          cobalt: 'var(--accent-cobalt)',
+          silver: 'var(--text-muted)',
+          blue: 'var(--accent-blue)',
+        }
+      },
+      fontFamily: {
+        sans: ['"Plus Jakarta Sans"', 'Inter', 'sans-serif'],
+        display: ['"Space Grotesk"', 'sans-serif'],
+        mono: ['"JetBrains Mono"', 'monospace'],
       },
       animation: {
         'fade-in': 'fade-in 0.4s ease-out',

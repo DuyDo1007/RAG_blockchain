@@ -15,17 +15,11 @@ class RAGService:
     
     @staticmethod
     async def get_answer(query: str, chat_history: List[Dict[str, Any]] = None, top_k: int = 5) -> Dict[str, Any]:
-        """
-        Get answer from RAG pipeline
-        
-        Args:
-            query: User question
-            chat_history: Previous messages context
-            top_k: Number of top similar documents to retrieve
-            
-        Returns:
-            Dictionary with answer, sources, and confidence
-        """
+        """Get answer from RAG pipeline or Agentic RAG based on RAG_MODE setting"""
+        rag_mode = os.getenv("RAG_MODE", "basic").lower()
+        if rag_mode == "agentic":
+            return await RAGService.get_answer_agentic(query, chat_history, top_k)
+
         try:
             # Retrieve relevant documents
             retrieved_docs = await asyncio.to_thread(
@@ -46,8 +40,10 @@ class RAGService:
             sources = []
             if isinstance(retrieved_docs, list):
                 for doc in retrieved_docs:
-                    if isinstance(doc, dict) and 'source' in doc:
-                        sources.append(doc['source'])
+                    if isinstance(doc, dict):
+                        src = doc.get('title') or doc.get('source')
+                        if src and src not in sources:
+                            sources.append(src)
             
             return {
                 "answer": answer,
@@ -85,7 +81,6 @@ class RAGService:
     async def health_check() -> Dict[str, bool]:
         """Check if RAG pipeline is ready"""
         try:
-            # Try a simple retrieval
             await asyncio.to_thread(
                 retrieve,
                 "test query",
@@ -94,3 +89,37 @@ class RAGService:
             return {"rag_ready": True}
         except Exception as e:
             return {"rag_ready": False, "error": str(e)}
+
+    @staticmethod
+    async def get_answer_agentic(query: str, chat_history: List[Dict[str, Any]] = None, top_k: int = 6) -> Dict[str, Any]:
+        """Execute LangGraph-based multi-step reasoning Agentic RAG"""
+        try:
+            from src.agent_rag import run_agent
+            result = await run_agent(query, chat_history=chat_history, top_k=top_k)
+            return result if isinstance(result, dict) else {
+                "answer": str(result),
+                "sources": [],
+                "retrieved_count": 0,
+                "success": True
+            }
+        except Exception as e:
+            print(f"[RAGService] Agentic RAG error, fallback to basic: {e}")
+            # Fallback to basic
+            retrieved_docs = await asyncio.to_thread(retrieve, query, top_k)
+            answer = await asyncio.to_thread(generate_answer_with_gemini, query, retrieved_docs, chat_history=chat_history)
+            sources = [d.get("title") for d in retrieved_docs if isinstance(d, dict) and d.get("title")]
+            return {
+                "answer": answer,
+                "sources": sources,
+                "retrieved_count": len(retrieved_docs),
+                "success": True
+            }
+
+    @staticmethod
+    async def get_answer_streaming(query: str, chat_history: List[Dict[str, Any]] = None, top_k: int = 5):
+        """Async generator yielding answer chunks for SSE"""
+        from src.rag_qa import generate_answer_streaming
+        retrieved_docs = await asyncio.to_thread(retrieve, query, top_k)
+        stream_gen = generate_answer_streaming(query, retrieved_docs, chat_history=chat_history)
+        for chunk in stream_gen:
+            yield chunk

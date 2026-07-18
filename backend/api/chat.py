@@ -1,10 +1,11 @@
 """
-Chat API Endpoints
+Chat API Endpoints (Secured with JWT Authentication)
 """
 from fastapi import APIRouter, HTTPException, Depends, WebSocket, WebSocketDisconnect
 from datetime import datetime
 from bson import ObjectId
 import json
+import asyncio
 from typing import List, Optional
 
 from backend.models.schemas import (
@@ -12,8 +13,10 @@ from backend.models.schemas import (
 )
 from backend.models.database import get_database
 from backend.services.rag_service import RAGService
+from backend.middleware.auth_middleware import get_current_user
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
+
 
 def format_datetime(val):
     if not val:
@@ -24,7 +27,7 @@ def format_datetime(val):
         return val.isoformat()
     return str(val)
 
-# WebSocket connection manager
+
 class ConnectionManager:
     def __init__(self):
         self.active_connections: List[WebSocket] = []
@@ -34,7 +37,8 @@ class ConnectionManager:
         self.active_connections.append(websocket)
 
     def disconnect(self, websocket: WebSocket):
-        self.active_connections.remove(websocket)
+        if websocket in self.active_connections:
+            self.active_connections.remove(websocket)
 
     async def broadcast(self, message: str):
         for connection in self.active_connections:
@@ -49,11 +53,12 @@ manager = ConnectionManager()
 
 @router.post("/sessions")
 async def create_session(
-    user_id: str,
     title: str = "New Chat",
-    db = Depends(get_database)
+    db = Depends(get_database),
+    current_user: dict = Depends(get_current_user)
 ) -> dict:
-    """Create a new chat session"""
+    """Create a new chat session for current authenticated user"""
+    user_id = str(current_user["_id"])
     session = ChatSession(
         user_id=user_id,
         title=title,
@@ -68,15 +73,21 @@ async def create_session(
     }
 
 
+@router.get("/sessions")
 @router.get("/sessions/{user_id}")
 async def get_user_sessions(
-    user_id: str,
+    user_id: Optional[str] = None,
     limit: int = 20,
-    db = Depends(get_database)
+    db = Depends(get_database),
+    current_user: dict = Depends(get_current_user)
 ) -> List[dict]:
-    """Get all chat sessions for a user"""
+    """Get all chat sessions for the authenticated user"""
+    auth_user_id = str(current_user["_id"])
+    # If user_id provided in URL, make sure it matches auth user or just override it safely
+    target_user_id = auth_user_id
+    
     sessions = await db["chat_sessions"].find(
-        {"user_id": user_id}
+        {"user_id": target_user_id}
     ).sort("updated_at", -1).limit(limit).to_list(length=limit)
     
     return [
@@ -94,15 +105,17 @@ async def get_user_sessions(
 @router.get("/sessions/{session_id}/messages")
 async def get_session_messages(
     session_id: str,
-    db = Depends(get_database)
+    db = Depends(get_database),
+    current_user: dict = Depends(get_current_user)
 ) -> dict:
-    """Get all messages in a session"""
+    """Get all messages in a session belonging to authenticated user"""
     try:
+        auth_user_id = str(current_user["_id"])
         session = await db["chat_sessions"].find_one(
-            {"_id": ObjectId(session_id)}
+            {"_id": ObjectId(session_id), "user_id": auth_user_id}
         )
         if not session:
-            raise HTTPException(status_code=404, detail="Session not found")
+            raise HTTPException(status_code=404, detail="Cuộc trò chuyện không tồn tại hoặc bạn không có quyền truy cập")
         
         return {
             "session_id": session_id,
@@ -118,28 +131,31 @@ async def get_session_messages(
             ]
         }
     except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
         raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.post("/send")
 async def send_message(
     request: CreateChatRequest,
-    db = Depends(get_database)
+    db = Depends(get_database),
+    current_user: dict = Depends(get_current_user)
 ) -> ChatResponse:
     """Send a message and get AI response"""
     try:
-        # Get or create session
+        auth_user_id = str(current_user["_id"])
         session = None
         if request.session_id:
             session = await db["chat_sessions"].find_one(
-                {"_id": ObjectId(request.session_id)}
+                {"_id": ObjectId(request.session_id), "user_id": auth_user_id}
             )
             if not session:
-                raise HTTPException(status_code=404, detail="Session not found")
+                raise HTTPException(status_code=404, detail="Session not found or forbidden")
         else:
             # Create new session
             new_session = ChatSession(
-                user_id=request.user_id,
+                user_id=auth_user_id,
                 title="New Chat"
             )
             result = await db["chat_sessions"].insert_one(
@@ -165,13 +181,18 @@ async def send_message(
             }
         )
 
-        # Get chat history from session (exclude the current user message to avoid duplicate context)
         chat_history = session.get("messages", []) if session else []
+        current_title = session.get("title", "New Chat")
+        need_title = current_title in ["New Chat", "Cuộc trò chuyện mới"] or not current_title
 
-        # Get AI response using RAG and passing the history
-        rag_result = await RAGService.get_answer(request.message, chat_history=chat_history, top_k=5)
+        if need_title:
+            rag_task = RAGService.get_answer(request.message, chat_history=chat_history, top_k=5)
+            title_task = RAGService.get_suggested_title(request.message)
+            rag_result, new_title = await asyncio.gather(rag_task, title_task)
+        else:
+            rag_result = await RAGService.get_answer(request.message, chat_history=chat_history, top_k=5)
+            new_title = None
         
-        # Add assistant message
         assistant_message = Message(
             role="assistant",
             content=rag_result["answer"],
@@ -186,11 +207,7 @@ async def send_message(
             }
         )
 
-        # Generate new title if session is new / has default title
-        new_title = None
-        current_title = session.get("title", "New Chat")
-        if current_title in ["New Chat", "Cuộc trò chuyện mới"] or not current_title:
-            new_title = await RAGService.get_suggested_title(request.message)
+        if new_title:
             await db["chat_sessions"].update_one(
                 {"_id": ObjectId(request.session_id)},
                 {"$set": {"title": new_title}}
@@ -205,24 +222,30 @@ async def send_message(
         )
 
     except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.delete("/sessions/{session_id}")
 async def delete_session(
     session_id: str,
-    db = Depends(get_database)
+    db = Depends(get_database),
+    current_user: dict = Depends(get_current_user)
 ) -> dict:
     """Delete a chat session"""
     try:
+        auth_user_id = str(current_user["_id"])
         result = await db["chat_sessions"].delete_one(
-            {"_id": ObjectId(session_id)}
+            {"_id": ObjectId(session_id), "user_id": auth_user_id}
         )
         if result.deleted_count == 0:
-            raise HTTPException(status_code=404, detail="Session not found")
+            raise HTTPException(status_code=404, detail="Session not found or access denied")
         
         return {"message": "Session deleted successfully", "deleted_id": session_id}
     except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
         raise HTTPException(status_code=400, detail=str(e))
 
 
@@ -230,29 +253,34 @@ async def delete_session(
 async def update_session_title(
     session_id: str,
     new_title: str,
-    db = Depends(get_database)
+    db = Depends(get_database),
+    current_user: dict = Depends(get_current_user)
 ) -> dict:
     """Update session title"""
     try:
-        await db["chat_sessions"].update_one(
-            {"_id": ObjectId(session_id)},
+        auth_user_id = str(current_user["_id"])
+        res = await db["chat_sessions"].update_one(
+            {"_id": ObjectId(session_id), "user_id": auth_user_id},
             {"$set": {"title": new_title, "updated_at": datetime.utcnow()}}
         )
+        if res.matched_count == 0:
+            raise HTTPException(status_code=404, detail="Session not found or access denied")
         return {"message": "Title updated", "session_id": session_id, "new_title": new_title}
     except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
         raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.websocket("/ws/{session_id}")
 async def websocket_endpoint(websocket: WebSocket, session_id: str, db = Depends(get_database)):
-    """WebSocket endpoint for real-time chat (future enhancement)"""
+    """WebSocket endpoint for real-time chat"""
     await manager.connect(websocket)
     try:
         while True:
             data = await websocket.receive_text()
             message_data = json.loads(data)
             
-            # Process message
             rag_result = await RAGService.get_answer(message_data["message"])
             
             response = {
