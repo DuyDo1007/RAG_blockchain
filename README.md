@@ -1,29 +1,27 @@
-# 🛡️ GenAI Blockchain Security Mentor & Smart Contract Auditor
+# GenAI Blockchain Security Mentor & Smart Contract Auditor
 
-Dự án ứng dụng Generative AI tiên tiến kết hợp hệ thống Hybrid RAG (Retrieval-Augmented Generation) để tạo ra một **Blockchain Security Mentor** thông minh, hỗ trợ người dùng tìm hiểu lỗ hổng bảo mật, giải đáp kiến thức và kiểm thử tự động (audit) Smart Contract trên các mạng Blockchain như Ethereum và BNB Chain.
+Hệ thống **Blockchain Security Mentor** và **Smart Contract Auditor** ứng dụng Generative AI kết hợp Hybrid RAG (Retrieval-Augmented Generation). Dự án hỗ trợ người dùng tìm hiểu lỗ hổng bảo mật, giải đáp kiến thức và tự động kiểm thử (audit) Smart Contract trên các mạng blockchain Ethereum và BNB Chain.
 
 ---
 
-## 🚀 Tính năng nổi bật
+## Tính năng chính
 
-### 1. 🤖 AI Security Mentor (Cố vấn bảo mật chuyên sâu)
-- **Phương pháp sư phạm trực quan:** Mentor AI không chỉ liệt kê lỗ hổng một cách khô khan mà giải thích qua các câu chuyện và phép ẩn dụ thực tế sinh động (ví dụ: ví Reentrancy giống như việc liên tục rút tiền trước khi thủ quỹ cập nhật số dư).
-- **Cấu trúc phản hồi chuẩn hóa:** Mỗi câu trả lời luôn bao gồm 5 phần chính:
-  1. `# Khái niệm` - Định nghĩa đơn giản & ví dụ thực tế.
-  2. `# Xem xét vấn đề` - So sánh logic mong muốn (Intended) vs. logic thực tế (Actual).
-  3. `# Cách mà Hacker sẽ trục lợi` - Kịch bản tấn công chi tiết từng bước (Bước 1, Bước 2, Bước 3).
-  4. `# Bài học rút ra` - Giải pháp an toàn kèm so sánh trực quan `❌ Before` vs. `✅ After`.
-  5. `# Câu hỏi gợi mở` - Câu hỏi tương tác giúp học viên tự kiểm tra kiến thức.
-- **Tốc độ phản hồi vượt trội:** Hỗ trợ phát trực tiếp câu trả lời (Server-Sent Events - SSE Streaming) tạo hiệu ứng gõ chữ thời gian thực.
-- **Duy trì ngữ cảnh:** Khả năng ghi nhớ và hiểu sâu lịch sử hội thoại trước đó để phản hồi các câu hỏi tiếp nối.
+### 1. AI Security Mentor
+* **Giải thích trực quan:** Cung cấp câu trả lời dễ hiểu, sử dụng ẩn dụ thực tế để làm rõ các khái niệm bảo mật phức tạp (ví dụ: lỗi Reentrancy).
+* **Cấu trúc phản hồi chuẩn hóa:**
+  1. `Khái niệm`: Định nghĩa và ví dụ thực tế.
+  2. `Xem xét vấn đề`: So sánh logic mong muốn (Intended) vs. logic thực tế (Actual).
+  3. `Kịch bản tấn công`: Chi tiết các bước hacker khai thác lỗ hổng.
+  4. `Giải pháp khắc phục`: So sánh trực quan mã nguồn trước và sau khi sửa lỗi (`Before` / `After`).
+  5. `Câu hỏi gợi mở`: Câu hỏi tương tác giúp củng cố kiến thức.
+* **Streaming & Context:** Hỗ trợ truyền dữ liệu thời gian thực (SSE Streaming) và duy trì ngữ cảnh hội thoại liên tục.
 
-### 2. 🔍 Pipeline Hybrid RAG thế hệ mới
-Hệ thống sử dụng cơ chế truy xuất phức hợp kết hợp sức mạnh của ngữ nghĩa và từ khóa:
-- **Semantic Search (Tìm kiếm ngữ nghĩa):** Sử dụng model nhúng chuyên dụng cho mã nguồn `microsoft/codebert-base` cùng cơ sở dữ liệu Vector (FAISS hoặc Qdrant).
-- **Lexical Search (Tìm kiếm từ khóa):** Sử dụng thuật toán BM25 để bắt chính xác các tên hàm, API đặc thù trong Smart Contract.
-- **Gộp kết quả:** Áp dụng thuật toán **Reciprocal Rank Fusion (RRF)** tối ưu hóa thứ hạng tài liệu từ cả hai nhánh tìm kiếm.
-- **Reranking:** Sử dụng Cross-Encoder siêu mạnh `jinaai/jina-reranker-v2-base-multilingual` để xếp hạng lại tài liệu chính xác nhất với câu hỏi.
-- **Chế độ Dự phòng (Graceful Degradation):** Khi vượt quá hạn ngạch (Out of Quota) của Gemini API, hệ thống tự động trích xuất các tài liệu thô trong cơ sở dữ liệu tri thức hiển thị cho người dùng, đảm bảo trải nghiệm không bị gián đoạn.
+### 2. Pipeline Hybrid RAG
+Hệ thống truy xuất tài liệu kết hợp giữa ngữ nghĩa và từ khóa:
+* **Semantic Search:** Sử dụng CodeBERT (`microsoft/codebert-base`) kết hợp cơ sở dữ liệu Vector (FAISS/Qdrant).
+* **Lexical Search:** Sử dụng thuật toán BM25 định vị chính xác tên hàm và API đặc thù.
+* **Độ chính xác cao:** Gộp kết quả bằng Reciprocal Rank Fusion (RRF) và tối ưu xếp hạng bằng Jina Reranker v2.
+* **Cơ chế dự phòng:** Tự động hiển thị tài liệu thô từ cơ sở dữ liệu khi Gemini API vượt quá hạn ngạch.
 
 ```mermaid
 graph TD
@@ -32,39 +30,39 @@ graph TD
     FAISS --> RRF[Reciprocal Rank Fusion RRF]
     BM25 --> RRF
     RRF --> Jina[Jina AI Reranker v2 <br/> Multilingual Reranking]
-    Jina --> Gemini[Gemini 2.5 API <br/> Mentor Prompt Template]
+    Jina --> Gemini[Gemini API <br/> Mentor Prompt Template]
     Gemini --> FinalAnswer[Interactive Pedagogical Response]
 ```
 
-### 3. 🔍 Smart Contract Security Auditing (Audit Hợp đồng Thông minh)
-- **Tích hợp Explorer API:** Tự động tải mã nguồn Solidity trực tiếp từ địa chỉ ví trên **Etherscan** hoặc **BscScan**.
-- **Phân tích mã trực tiếp:** Cho phép người dùng dán trực tiếp mã nguồn Solidity/Vyper lên giao diện để phân tích tức thời.
-- **Phân loại mức độ nghiêm trọng:** Đánh giá lỗ hổng theo các mức từ `Critical`, `High`, `Medium` đến `Low`.
+### 3. Smart Contract Security Auditing
+* **Tích hợp Explorer API:** Tải trực tiếp mã nguồn Solidity từ Etherscan hoặc BscScan qua địa chỉ hợp đồng.
+* **Phân tích mã nguồn:** Hỗ trợ quét và phát hiện lỗ hổng trực tiếp từ mã nguồn Solidity/Vyper do người dùng cung cấp.
+* **Phân loại lỗ hổng:** Đánh giá và phân loại mức độ nghiêm trọng từ Low đến Critical.
 
-### 4. 🗺️ Interactive Roadmap (Lộ trình học tập tương tác)
-- Bản đồ học tập trực quan giúp xây dựng nền tảng từ cơ bản đến nâng cao về bảo mật blockchain.
-- Hệ thống trắc nghiệm nhanh (Quiz) tích hợp trong mỗi bài học để củng cố kiến thức.
-- Lưu trữ tiến độ học tập đồng bộ thời gian thực theo tài khoản cá nhân.
+### 4. Lộ trình học tập tương tác
+* **Roadmap trực quan:** Bản đồ học tập bảo mật blockchain từ cơ bản đến nâng cao.
+* **Quiz củng cố:** Hệ thống câu hỏi trắc nghiệm tích hợp theo từng bài học.
+* **Đồng bộ tiến độ:** Lưu trữ lịch sử và tiến trình học tập theo tài khoản người dùng.
 
 ---
 
-## 🛠️ Công nghệ sử dụng (Tech Stack)
+## Công nghệ sử dụng (Tech Stack)
 
 ### Backend
-- **Core Framework:** FastAPI (Python 3.10+) - Tốc độ cao, hỗ trợ Asynchronous.
-- **Database:** MongoDB (Atlas/Local) kết hợp cơ chế dự phòng cơ sở dữ liệu JSON cục bộ.
-- **RAG & Vector DB:** Qdrant (Cloud/Docker) / FAISS, BM25, CodeBERT Embeddings, Jina Reranker.
-- **AI SDK:** `google-genai` (sử dụng các mô hình `gemini-2.5-pro` & `gemini-2.5-flash`).
-- **Auth:** JWT (JSON Web Tokens) bảo mật thông tin và theo dõi tiến độ người dùng.
+* **Framework:** FastAPI (Python 3.10+)
+* **Database:** MongoDB (Atlas/Local), cơ sở dữ liệu JSON dự phòng.
+* **RAG & Vector DB:** Qdrant / FAISS, BM25, CodeBERT Embeddings, Jina Reranker.
+* **AI Engine:** Google GenAI SDK (Gemini 2.5 Pro & Gemini 2.5 Flash).
+* **Authentication:** JWT (JSON Web Tokens).
 
 ### Frontend
-- **Framework:** React.js (Vite) + JavaScript.
-- **Styling:** Custom CSS Dark Cyberpunk độc bản kết hợp UI/UX hiện đại, mượt mà.
-- **Components:** Tích hợp giao diện Chatbot, Trình đọc/Soạn thảo mã nguồn, Lộ trình dạng cây (interactive nodes).
+* **Framework:** React (Vite) + JavaScript.
+* **Styling:** Custom CSS (Dark Cyberpunk theme).
+* **Components:** Giao diện Chatbot, Trình soạn thảo mã nguồn, Bản đồ lộ trình dạng cây tương tác.
 
 ---
 
-## 📂 Cấu trúc dự án
+## Cấu trúc thư mục
 
 ```text
 genai-blockchain-security/
@@ -94,9 +92,9 @@ genai-blockchain-security/
 
 ---
 
-## ⚙️ Cấu hình biến môi trường
+## Cấu hình biến môi trường
 
-Sao chép file `.env.example` thành `.env` ở thư mục gốc và điền các thông số:
+Sao chép `.env.example` thành `.env` tại thư mục gốc và cấu hình các thông số sau:
 
 ```env
 # Gemini API Key (Bắt buộc)
@@ -116,7 +114,7 @@ BSCSCAN_API_KEY=your_bscscan_key
 MONGO_URL=mongodb+srv://<username>:<password>@cluster.mongodb.net/
 MONGO_DB=genai_blockchain
 
-# Cấu hình server chạy
+# Cấu hình server
 SERVER_HOST=0.0.0.0
 SERVER_PORT=8000
 ENV=development
@@ -124,11 +122,11 @@ ENV=development
 
 ---
 
-## 🏃 Khởi chạy dự án
+## Hướng dẫn khởi chạy
 
 ### Cách 1: Chạy trực tiếp (Local Development)
 
-#### 1. Chạy Backend (FastAPI):
+#### 1. Khởi chạy Backend (FastAPI):
 ```bash
 # Tạo môi trường ảo
 python -m venv .venv
@@ -147,33 +145,33 @@ pip install -r requirements.txt
 # Khởi chạy backend
 python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
 ```
-API Docs có thể truy cập tại: `http://localhost:8000/docs`
+Tài liệu hướng dẫn API (Swagger UI): `http://localhost:8000/docs`
 
-#### 2. Chạy Frontend (React Vite):
+#### 2. Khởi chạy Frontend (React Vite):
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
-Giao diện ứng dụng chạy tại: `http://localhost:5173`
+Truy cập giao diện ứng dụng tại: `http://localhost:5173`
 
 ---
 
-### Cách 2: Khởi chạy nhanh bằng Docker Compose
+### Cách 2: Khởi chạy bằng Docker Compose
 
-Yêu cầu máy tính đã cài đặt và bật Docker Desktop.
+Yêu cầu hệ thống đã cài đặt Docker và Docker Compose.
 
 ```bash
 docker-compose up --build -d
 ```
 
-Hệ thống sẽ chạy ngầm các container bao gồm:
+Các dịch vụ sẽ được chạy ngầm bao gồm:
 1. `genai-blockchain-mongo`: Cơ sở dữ liệu MongoDB.
 2. `genai-blockchain-backend`: API Server FastAPI.
 3. `genai-blockchain-frontend`: Client React.
 
 ---
 
-## 📜 Giấy phép
+## Giấy phép
 
 Dự án này được phát triển dưới giấy phép MIT License.
