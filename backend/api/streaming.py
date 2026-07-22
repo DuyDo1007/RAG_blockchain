@@ -3,6 +3,7 @@ Server-Sent Events (SSE) Streaming API Endpoint for Real-Time Chat
 """
 import json
 import asyncio
+import os
 from datetime import datetime
 from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -57,66 +58,81 @@ async def stream_chat_response(
 
     async def event_generator():
         try:
-            # 1. Retrieve documents (run in thread pool)
-            docs = await asyncio.to_thread(retrieve_auto, request.message, top_k=5)
-            sources = [d["title"] for d in docs if d.get("title")]
-            
-            # Send sources right away
-            yield f"data: {json.dumps({'type': 'sources', 'content': sources, 'session_id': request.session_id}, ensure_ascii=False)}\n\n"
-
-            # 2. Compose prompt and stream from Gemini
-            prompt = compose_prompt(request.message, docs, chat_history)
+            rag_mode = os.getenv("RAG_MODE", "agentic").lower()
             completed_answer = ""
+            sources = []
 
-            try:
-                client = get_gemini_client()
-
-                response_stream = await asyncio.to_thread(
-                    client.models.generate_content_stream,
-                    model="gemini-2.5-flash",
-                    contents=prompt,
-                    config=types.GenerateContentConfig(temperature=0.2, max_output_tokens=8192)
-                )
-
+            if rag_mode == "agentic":
+                from src.agent_rag import stream_agentic_workflow
                 full_text = []
-                for chunk in response_stream:
-                    if chunk.text:
-                        full_text.append(chunk.text)
-                        chunk_data = {
-                            "type": "chunk",
-                            "content": chunk.text
-                        }
-                        yield f"data: {json.dumps(chunk_data, ensure_ascii=False)}\n\n"
-                        await asyncio.sleep(0.01)  # allow event loop processing
-
+                async for evt in stream_agentic_workflow(request.message, chat_history, top_k=5):
+                    if evt.get("type") == "sources":
+                        sources = evt.get("content", [])
+                        yield f"data: {json.dumps({'type': 'sources', 'content': sources, 'session_id': request.session_id}, ensure_ascii=False)}\n\n"
+                    elif evt.get("type") == "status":
+                        yield f"data: {json.dumps(evt, ensure_ascii=False)}\n\n"
+                    elif evt.get("type") == "chunk":
+                        content_chunk = evt.get("content", "")
+                        full_text.append(content_chunk)
+                        yield f"data: {json.dumps({'type': 'chunk', 'content': content_chunk}, ensure_ascii=False)}\n\n"
                 completed_answer = "".join(full_text)
-
-            except Exception as api_err:
-                # Check if it's a quota, API key or connection error to Gemini API
-                err_str = str(api_err)
-                is_quota_or_key = (
-                    "429" in err_str or 
-                    "quota" in err_str.lower() or 
-                    "limit" in err_str.lower() or 
-                    "api key" in err_str.lower() or
-                    "invalid" in err_str.lower() or
-                    "credentials" in err_str.lower() or
-                    "not found" in err_str.lower()
-                )
+            else:
+                # 1. Retrieve documents (run in thread pool)
+                docs = await asyncio.to_thread(retrieve_auto, request.message, top_k=5)
+                sources = [d["title"] for d in docs if d.get("title")]
                 
-                if is_quota_or_key:
-                    # Fallback to local RAG knowledge base
-                    fallback_text = generate_fallback_answer(request.message, docs)
-                    completed_answer = fallback_text
+                # Send sources right away
+                yield f"data: {json.dumps({'type': 'sources', 'content': sources, 'session_id': request.session_id}, ensure_ascii=False)}\n\n"
+
+                # 2. Compose prompt and stream from Gemini
+                prompt = compose_prompt(request.message, docs, chat_history)
+
+                try:
+                    client = get_gemini_client()
+
+                    response_stream = await asyncio.to_thread(
+                        client.models.generate_content_stream,
+                        model="gemini-3.5-flash",
+                        contents=prompt,
+                        config=types.GenerateContentConfig(temperature=0.2, max_output_tokens=8192)
+                    )
+
+                    full_text = []
+                    for chunk in response_stream:
+                        if chunk.text:
+                            full_text.append(chunk.text)
+                            chunk_data = {
+                                "type": "chunk",
+                                "content": chunk.text
+                            }
+                            yield f"data: {json.dumps(chunk_data, ensure_ascii=False)}\n\n"
+                            await asyncio.sleep(0.01)  # allow event loop processing
+
+                    completed_answer = "".join(full_text)
+
+                except Exception as api_err:
+                    err_str = str(api_err)
+                    is_quota_or_key = (
+                        "429" in err_str or 
+                        "quota" in err_str.lower() or 
+                        "limit" in err_str.lower() or 
+                        "api key" in err_str.lower() or
+                        "invalid" in err_str.lower() or
+                        "credentials" in err_str.lower() or
+                        "not found" in err_str.lower()
+                    )
                     
-                    # Yield fallback answer in small chunks to simulate streaming
-                    words = fallback_text.split(" ")
-                    for i in range(0, len(words), 3):
-                        chunk_text = " ".join(words[i:i+3]) + " "
-                        yield f"data: {json.dumps({'type': 'chunk', 'content': chunk_text}, ensure_ascii=False)}\n\n"
-                        await asyncio.sleep(0.02)
-                else:
-                    raise api_err
+                    if is_quota_or_key:
+                        fallback_text = generate_fallback_answer(request.message, docs)
+                        completed_answer = fallback_text
+                        
+                        words = fallback_text.split(" ")
+                        for i in range(0, len(words), 3):
+                            chunk_text = " ".join(words[i:i+3]) + " "
+                            yield f"data: {json.dumps({'type': 'chunk', 'content': chunk_text}, ensure_ascii=False)}\n\n"
+                            await asyncio.sleep(0.02)
+                    else:
+                        raise api_err
 
             # 3. Save assistant message to DB
             assistant_message = Message(

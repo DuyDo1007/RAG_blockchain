@@ -22,7 +22,7 @@ class QdrantVectorStore:
 
     def __init__(self):
         self.url = os.getenv("QDRANT_URL", "http://localhost:6333")
-        self.collection_name = os.getenv("QDRANT_COLLECTION", "blockchain_security")
+        self.collection_name = os.getenv("QDRANT_COLLECTION", "blockchain_education")
         self.vector_size = 768  # Microsoft CodeBERT dimension
 
     @property
@@ -117,12 +117,21 @@ class QdrantVectorStore:
             qdrant_filter = Filter(must=conditions)
 
         try:
-            search_result = await self.async_client.search(
-                collection_name=col_name,
-                query_vector=query_vector,
-                limit=top_k,
-                query_filter=qdrant_filter
-            )
+            if hasattr(self.async_client, "query_points"):
+                response = await self.async_client.query_points(
+                    collection_name=col_name,
+                    query=query_vector,
+                    limit=top_k,
+                    query_filter=qdrant_filter
+                )
+                search_result = response.points
+            else:
+                search_result = await self.async_client.search(
+                    collection_name=col_name,
+                    query_vector=query_vector,
+                    limit=top_k,
+                    query_filter=qdrant_filter
+                )
 
             results = []
             for hit in search_result:

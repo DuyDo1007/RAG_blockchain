@@ -96,3 +96,15 @@ async def get_optional_user(
     except Exception:
         pass
     return None
+
+
+async def require_admin(
+    current_user: Dict[str, Any] = Depends(get_current_user)
+) -> Dict[str, Any]:
+    """Dependency: require the authenticated user to be an admin"""
+    if current_user.get("role") != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Yêu cầu quyền Quản trị viên (Admin privileges required)"
+        )
+    return current_user

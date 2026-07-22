@@ -18,6 +18,7 @@ class User(BaseModel):
     google_id: Optional[str] = Field(default=None, description="Google OAuth subject ID")
     avatar_url: Optional[str] = Field(default=None, description="Profile avatar URL")
     is_active: bool = Field(default=True, description="Whether user account is active")
+    role: str = Field(default="user", description="Role: 'user' or 'admin'")
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 

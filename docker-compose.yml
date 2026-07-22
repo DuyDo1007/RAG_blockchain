@@ -39,6 +39,32 @@ services:
       retries: 5
     restart: unless-stopped
 
+  # Educational Content Ingestion Service
+  ingest:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: genai-blockchain-ingest
+    environment:
+      - QDRANT_URL=http://qdrant:6333
+      - QDRANT_COLLECTION=blockchain_education
+      - VECTOR_STORE=qdrant
+      - HF_HOME=/app/models/huggingface
+      - HF_HUB_DISABLE_SYMLINKS=1
+    volumes:
+      - ./src:/app/src
+      - ./backend:/app/backend
+      - ./data:/app/data
+      - ./models:/app/models
+      - hf_cache:/app/models/huggingface
+    depends_on:
+      qdrant:
+        condition: service_healthy
+    networks:
+      - genai-network
+    restart: "no"
+    command: python src/ingest_education.py
+
   # FastAPI Backend
   backend:
     build:
@@ -63,14 +89,14 @@ services:
       - JWT_REFRESH_TOKEN_EXPIRE_DAYS=7
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
-      # Qdrant
+      # Qdrant & Vector Store
       - QDRANT_URL=http://qdrant:6333
-      - QDRANT_COLLECTION=blockchain_security
+      - QDRANT_COLLECTION=blockchain_education
       - VECTOR_STORE=${VECTOR_STORE:-qdrant}
-      # Blockchain
-      - ETHERSCAN_API_KEY=${ETHERSCAN_API_KEY}
+      - HF_HOME=/app/models/huggingface
+      - HF_HUB_DISABLE_SYMLINKS=1
       # RAG
-      - RAG_MODE=${RAG_MODE:-basic}
+      - RAG_MODE=${RAG_MODE:-agentic}
       # CORS
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:3000}
     volumes:
@@ -78,11 +104,14 @@ services:
       - ./backend:/app/backend
       - ./data:/app/data
       - ./models:/app/models
+      - hf_cache:/app/models/huggingface
     depends_on:
       mongo:
         condition: service_healthy
       qdrant:
         condition: service_healthy
+      ingest:
+        condition: service_completed_successfully
     networks:
       - genai-network
     restart: unless-stopped
@@ -142,6 +171,7 @@ volumes:
   mongo_data:
   mongo_config:
   qdrant_data:
+  hf_cache:
 
 networks:
   genai-network:

@@ -1,0 +1,11 @@
+.git
+.venv
+venv
+__pycache__
+*.pyc
+.env
+models/huggingface
+models/
+data/
+frontend/node_modules/
+node_modules/

@@ -19,6 +19,7 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+.agents
 
 # Virtual Environment
 .venv/
@@ -68,3 +69,4 @@ Thumbs.db
 
 #skill for llms
 SKILL.md
+test.md

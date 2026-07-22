@@ -128,7 +128,7 @@ class CreateChatRequest(BaseModel):
     user_id: Optional[str] = None
     session_id: Optional[str] = None
     message: str
-    model: str = "gemini-2.5-flash"
+    model: str = "gemini-3.5-flash"
 
     model_config = ConfigDict(
         arbitrary_types_allowed=True
@@ -190,6 +190,7 @@ class UserResponse(BaseModel):
     email: str
     username: str
     auth_provider: str
+    role: str = "user"
     avatar_url: Optional[str] = None
     created_at: datetime
 
@@ -199,17 +200,4 @@ class UserResponse(BaseModel):
     )
 
 
-# =====================================================================
-# Contract Audit Schemas
-# =====================================================================
 
-class ContractAuditRequest(BaseModel):
-    """Request schema to audit contract by address"""
-    address: str = Field(..., description="Blockchain smart contract address (e.g. 0x...)")
-    chain: str = Field(default="ethereum", description="Blockchain network: 'ethereum' or 'bsc'")
-
-
-class ContractAnalyzeRequest(BaseModel):
-    """Request schema to analyze raw code"""
-    code: str = Field(..., description="Raw Solidity or Vyper code")
-    language: str = Field(default="solidity", description="Programming language: 'solidity' or 'vyper'")

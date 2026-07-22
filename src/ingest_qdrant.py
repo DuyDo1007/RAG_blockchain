@@ -14,7 +14,69 @@ from transformers import AutoTokenizer, AutoModel
 sys.path.append(str(Path(__file__).parent.parent))
 
 from backend.services.vector_store import QdrantVectorStore
-from src.semantic_chunker import semantic_chunk
+import re
+
+def extract_dangerous_apis(text):
+    dangerous_list = ['execute', 'eval', 'strcpy', 'gets', 'delegatecall', 'selfdestruct', 'call.value', 'tx.origin', 'block.timestamp', 'suicide', 'exec']
+    found = []
+    text_lower = str(text).lower()
+    for d in dangerous_list:
+        if d.lower() in text_lower:
+            found.append(d)
+    return found
+
+def ast_aware_chunking(df):
+    chunks = []
+    print('Đang thực hiện AST-aware chunking...')
+    for idx, row in df.iterrows():
+        row_id = row.get('id', idx)
+        content = str(row.get('content', ''))
+        code = str(row.get('code', ''))
+        title = str(row.get('title', ''))
+        vuln_label = str(row.get('vulnerability_label', ''))
+        impact = str(row.get('impact', 'MEDIUM'))
+        contract_name = str(row.get('contract_name', 'Unknown'))
+        function_name = str(row.get('function_name', 'Unknown'))
+        
+        base_chunk = {
+            'id': f'{row_id}_parent', 
+            'parent_id': row_id, 
+            'title': title, 
+            'content': content, 
+            'code': '', 
+            'vulnerability_label': vuln_label, 
+            'dangerous_apis': ','.join(extract_dangerous_apis(content)), 
+            'chunk_type': 'parent',
+            'impact': impact,
+            'contract_name': contract_name,
+            'function_name': function_name
+        }
+        chunks.append(base_chunk)
+        if code and code.strip() and (code != 'nan'):
+            parts = re.split('(?m)^(?:function|contract|def|class)\\s+', code)
+            for i, part in enumerate(parts):
+                part = part.strip()
+                if not part:
+                    continue
+                func_name_match = re.match('([a-zA-Z0-9_]+)', part)
+                func_name = func_name_match.group(1) if func_name_match else f'snippet_{i}'
+                child_chunk = {
+                    'id': f'{row_id}_child_{i}', 
+                    'parent_id': row_id, 
+                    'title': title, 
+                    'content': f'Code snippet from {title} (Function: {func_name})', 
+                    'code': part, 
+                    'vulnerability_label': vuln_label, 
+                    'dangerous_apis': ','.join(extract_dangerous_apis(part)), 
+                    'chunk_type': 'child',
+                    'impact': impact,
+                    'contract_name': contract_name,
+                    'function_name': func_name
+                }
+                chunks.append(child_chunk)
+    result_df = pd.DataFrame(chunks)
+    print(f'✓ Đã chia {len(df)} records thành {len(result_df)} chunks')
+    return result_df
 
 DATA_DIR = Path(__file__).parent.parent / "data" / "processed"
 CSV_PATH = DATA_DIR / "findings.csv"
@@ -61,7 +123,7 @@ async def main():
     print(f"[Ingest] Loaded {len(df)} records.")
 
     # Apply semantic chunking
-    chunked_df = semantic_chunk(df)
+    chunked_df = ast_aware_chunking(df)
     chunked_df = chunked_df.fillna("")
 
     # Setup PyTorch device and model

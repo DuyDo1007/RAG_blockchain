@@ -5,6 +5,19 @@ const AuthContext = createContext(null)
 
 export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
 
+// Role hierarchy: admin > user > guest
+export const ROLES = {
+  ADMIN: 'admin',
+  USER: 'user',
+  GUEST: 'guest'
+}
+
+// Check if a role has at least the required level
+export function hasRole(userRole, requiredRole) {
+  const hierarchy = { admin: 3, user: 2, guest: 1 }
+  return (hierarchy[userRole] || 0) >= (hierarchy[requiredRole] || 0)
+}
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [token, setToken] = useState(() => localStorage.getItem('access_token'))
@@ -30,6 +43,13 @@ export function AuthProvider({ children }) {
         const originalRequest = error.config
         if (error.response && error.response.status === 401 && !originalRequest._retry) {
           originalRequest._retry = true
+
+          // Don't attempt token refresh for guest users
+          const isGuest = localStorage.getItem('guest_mode') === 'true'
+          if (isGuest) {
+            return Promise.reject(error)
+          }
+
           try {
             const currentRefresh = localStorage.getItem('refresh_token')
             if (!currentRefresh) throw new Error('No refresh token')
@@ -66,6 +86,20 @@ export function AuthProvider({ children }) {
   // Verify user on mount or token change
   useEffect(() => {
     async function fetchMe() {
+      // Check if user is in guest mode first
+      const isGuest = localStorage.getItem('guest_mode') === 'true'
+      if (isGuest) {
+        setUser({
+          id: 'guest_user',
+          username: 'Khách',
+          email: 'guest@academy.com',
+          role: ROLES.GUEST,
+          auth_provider: 'local'
+        })
+        setLoading(false)
+        return
+      }
+
       const storedToken = localStorage.getItem('access_token')
       if (!storedToken) {
         setUser(null)
@@ -76,7 +110,12 @@ export function AuthProvider({ children }) {
         const res = await axios.get(`${API_BASE_URL}/auth/me`, {
           headers: { Authorization: `Bearer ${storedToken}` }
         })
-        setUser(res.data)
+        // Ensure role is set (default to 'user' if backend doesn't return one)
+        const userData = res.data
+        if (!userData.role) {
+          userData.role = ROLES.USER
+        }
+        setUser(userData)
       } catch (err) {
         setUser(null)
         localStorage.removeItem('access_token')
@@ -92,13 +131,18 @@ export function AuthProvider({ children }) {
   const saveTokensAndFetchUser = async (access, refresh) => {
     localStorage.setItem('access_token', access)
     localStorage.setItem('refresh_token', refresh)
+    localStorage.removeItem('guest_mode') // Clear guest mode on real login
     setToken(access)
     setRefreshTokenStr(refresh)
     try {
       const res = await axios.get(`${API_BASE_URL}/auth/me`, {
         headers: { Authorization: `Bearer ${access}` }
       })
-      setUser(res.data)
+      const userData = res.data
+      if (!userData.role) {
+        userData.role = ROLES.USER
+      }
+      setUser(userData)
     } catch (e) {
       console.error('Failed to fetch user after login', e)
     }
@@ -122,12 +166,53 @@ export function AuthProvider({ children }) {
     return res.data
   }
 
-  const logout = () => {
+  const continueAsGuest = () => {
+    // Persist guest mode so it survives page refresh and fetchMe race
+    localStorage.setItem('guest_mode', 'true')
     localStorage.removeItem('access_token')
     localStorage.removeItem('refresh_token')
     setToken(null)
     setRefreshTokenStr(null)
+    setUser({
+      id: 'guest_user',
+      username: 'Khách',
+      email: 'guest@academy.com',
+      role: ROLES.GUEST,
+      auth_provider: 'local'
+    })
+    setLoading(false)
+  }
+
+  const logout = () => {
+    localStorage.removeItem('access_token')
+    localStorage.removeItem('refresh_token')
+    localStorage.removeItem('guest_mode')
+    setToken(null)
+    setRefreshTokenStr(null)
     setUser(null)
+  }
+
+  const getGuestProgress = () => {
+    try {
+      const stored = localStorage.getItem('guest_progress')
+      return stored ? JSON.parse(stored) : []
+    } catch (e) {
+      return []
+    }
+  }
+
+  const completeGuestLesson = (lessonId) => {
+    try {
+      const current = getGuestProgress()
+      if (!current.includes(lessonId)) {
+        const updated = [...current, lessonId]
+        localStorage.setItem('guest_progress', JSON.stringify(updated))
+        return updated
+      }
+      return current
+    } catch (e) {
+      return []
+    }
   }
 
   return (
@@ -137,10 +222,18 @@ export function AuthProvider({ children }) {
         token,
         loading,
         isAuthenticated: !!user,
+        isGuest: user?.role === ROLES.GUEST,
+        isAdmin: user?.role === ROLES.ADMIN,
+        role: user?.role || null,
         login,
         register,
         loginWithGoogle,
-        logout
+        continueAsGuest,
+        logout,
+        getGuestProgress,
+        completeGuestLesson,
+        hasRole: (requiredRole) => hasRole(user?.role, requiredRole),
+        ROLES
       }}
     >
       {children}

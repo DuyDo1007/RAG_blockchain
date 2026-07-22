@@ -14,8 +14,9 @@ from backend.models.database import MongoDBManager
 from backend.api.chat import router as chat_router
 from backend.api.roadmap import router as roadmap_router
 from backend.api.auth import router as auth_router
-from backend.api.contract import router as contract_router
 from backend.api.streaming import router as streaming_router
+from backend.api.admin import router as admin_router
+from backend.api.lab import router as lab_router
 
 load_dotenv()
 
@@ -36,8 +37,8 @@ async def lifespan(app: FastAPI):
 
 # Initialize FastAPI
 app = FastAPI(
-    title="GenAI Blockchain Security - Chatbot & Audit API",
-    description="Production-ready RAG chatbot and smart contract auditor with learning roadmap",
+    title="Blockchain Learning Platform - AI Tutor & Roadmap API",
+    description="Production-ready interactive blockchain learning platform with Agentic RAG AI Tutor",
     version="2.0.0",
     lifespan=lifespan
 )
@@ -62,7 +63,8 @@ app.include_router(auth_router)
 app.include_router(chat_router)
 app.include_router(streaming_router)
 app.include_router(roadmap_router)
-app.include_router(contract_router)
+app.include_router(admin_router)
+app.include_router(lab_router)
 
 
 @app.get("/")
@@ -77,7 +79,6 @@ async def root(request: Request):
             "auth": "/api/auth",
             "chat": "/api/chat",
             "roadmap": "/api/roadmap",
-            "contract": "/api/contract",
             "docs": "/docs"
         }
     }

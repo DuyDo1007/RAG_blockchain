@@ -4,6 +4,8 @@ Authentication API Endpoints (Registration, Login, Google OAuth, Refresh, Profil
 from datetime import datetime
 import os
 import httpx
+from typing import Optional
+from pydantic import BaseModel
 from fastapi import APIRouter, HTTPException, Depends, status
 import bcrypt
 from bson import ObjectId
@@ -196,6 +198,72 @@ async def get_current_user_profile(current_user: dict = Depends(get_current_user
         email=current_user["email"],
         username=current_user["username"],
         auth_provider=current_user.get("auth_provider", "local"),
+        role=current_user.get("role", "user"),
         avatar_url=current_user.get("avatar_url"),
         created_at=current_user.get("created_at", datetime.utcnow())
     )
+
+
+class ProfileUpdate(BaseModel):
+    username: Optional[str] = None
+    avatar_url: Optional[str] = None
+
+
+@router.put("/me", response_model=UserResponse)
+async def update_profile(
+    update_data: ProfileUpdate,
+    current_user: dict = Depends(get_current_user),
+    db = Depends(get_database)
+):
+    """Update current logged-in user profile"""
+    update_dict = {}
+    if update_data.username is not None:
+        username_clean = update_data.username.strip()
+        if not username_clean:
+            raise HTTPException(status_code=400, detail="Tên người dùng không được để trống")
+        # Check if username is already taken by another user
+        existing = await db["users"].find_one({"username": username_clean, "_id": {"$ne": current_user["_id"]}})
+        if existing:
+            raise HTTPException(status_code=400, detail="Tên người dùng đã tồn tại")
+        update_dict["username"] = username_clean
+
+    if update_data.avatar_url is not None:
+        update_dict["avatar_url"] = update_data.avatar_url.strip()
+
+    if update_dict:
+        await db["users"].update_one(
+            {"_id": current_user["_id"]},
+            {"$set": update_dict}
+        )
+        # Fetch updated user
+        updated_user = await db["users"].find_one({"_id": current_user["_id"]})
+    else:
+        updated_user = current_user
+
+    return UserResponse(
+        id=str(updated_user["_id"]),
+        email=updated_user["email"],
+        username=updated_user["username"],
+        auth_provider=updated_user.get("auth_provider", "local"),
+        role=updated_user.get("role", "user"),
+        avatar_url=updated_user.get("avatar_url"),
+        created_at=updated_user.get("created_at", datetime.utcnow())
+    )
+
+
+@router.delete("/me")
+async def delete_account(
+    current_user: dict = Depends(get_current_user),
+    db = Depends(get_database)
+):
+    """Delete current logged-in user account and their progress"""
+    user_id = str(current_user["_id"])
+    
+    # 1. Delete user progress records
+    await db["user_progress"].delete_many({"user_id": user_id})
+    
+    # 2. Delete user account
+    await db["users"].delete_one({"_id": current_user["_id"]})
+    
+    return {"message": "Xóa tài khoản thành công"}
+
