@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Send, Shield, Sparkles, Code2, AlertTriangle, BookOpen, Copy, Check, Lock } from 'lucide-react'
+import { Send, Shield, Sparkles, Code2, AlertTriangle, BookOpen, Copy, Check, Lock, Bookmark as BookmarkIcon, Star } from 'lucide-react'
 import axios from 'axios'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -22,6 +22,8 @@ const ChatWindow = ({ sessionId, userId, onSessionUpdated }) => {
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [copiedIndex, setCopiedIndex] = useState(null)
+  const [bookmarkedIndex, setBookmarkedIndex] = useState(null)
+  const [selectionTooltip, setSelectionTooltip] = useState(null)
   const messagesEndRef = useRef(null)
   const inputRef = useRef(null)
 
@@ -209,6 +211,50 @@ const ChatWindow = ({ sessionId, userId, onSessionUpdated }) => {
     setTimeout(() => setCopiedIndex(null), 2000)
   }
 
+  const handleBookmarkMessage = async (msg, idx, highlightedText = null) => {
+    try {
+      const token = localStorage.getItem('access_token')
+      if (!token) {
+        alert('Vui lòng đăng nhập để lưu vào Sổ tay kiến thức!')
+        return
+      }
+      await axios.post(
+        `${API_BASE_URL}/chat/bookmarks`,
+        {
+          message_id: `${idx}`,
+          session_id: sessionId,
+          title: highlightedText ? `Highlight: ${highlightedText.substring(0, 35)}...` : `AI Answer: ${msg.content ? msg.content.substring(0, 35) : 'Ghi chú'}...`,
+          content: msg.content || '',
+          highlighted_text: highlightedText,
+          sources: msg.sources || []
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+      setBookmarkedIndex(idx)
+      setTimeout(() => setBookmarkedIndex(null), 2500)
+      setSelectionTooltip(null)
+    } catch (error) {
+      console.error('Lỗi khi lưu bookmark:', error)
+      alert('Không thể lưu vào Sổ tay kiến thức. Vui lòng thử lại.')
+    }
+  }
+
+  const handleTextSelection = (e, msg, idx) => {
+    const selectedText = window.getSelection().toString().trim()
+    if (selectedText && selectedText.length > 5 && msg.role === 'assistant') {
+      const rect = e.target.getBoundingClientRect()
+      setSelectionTooltip({
+        text: selectedText,
+        msg,
+        idx,
+        x: e.clientX || rect.left + rect.width / 2,
+        y: (e.clientY || rect.top) - 40
+      })
+    } else {
+      setSelectionTooltip(null)
+    }
+  }
+
   const handleSuggestionClick = (text) => {
     setInput(text)
     inputRef.current?.focus()
@@ -252,16 +298,6 @@ const ChatWindow = ({ sessionId, userId, onSessionUpdated }) => {
           )}
         </div>
         <div className="flex items-center gap-3">
-          <button
-            onClick={() => setShowThoughtProcess(prev => !prev)}
-            className={`px-2.5 py-1 rounded-lg border text-[11px] font-mono transition ${
-              showThoughtProcess 
-                ? 'bg-amber-500/10 border-amber-500/30 text-amber-400 font-bold' 
-                : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            {showThoughtProcess ? 'Ẩn tiến trình RAG' : 'Xem tiến trình RAG'}
-          </button>
           {messages.length > 0 && (
             <button
               onClick={handleExportChat}
@@ -340,57 +376,40 @@ const ChatWindow = ({ sessionId, userId, onSessionUpdated }) => {
                       msg.role === 'user' ? 'bubble-user' : 'bubble-bot'
                     }`}
                   >
-                    {/* Copy Button on hover */}
+                    {/* Copy & Bookmark Buttons on hover */}
                     {msg.content && (
-                      <button
-                        onClick={() => handleCopyMessage(msg.content, idx)}
-                        className={`absolute top-3 right-3 p-1.5 rounded-lg transition-opacity ${
-                          msg.role === 'user'
-                            ? 'text-slate-950/70 hover:text-slate-955 bg-black/10 opacity-0 group-hover:opacity-100'
-                            : 'text-slate-400 hover:text-amber-550 bg-slate-800/80 opacity-0 group-hover:opacity-100'
-                        }`}
-                        title="Sao chép tin nhắn"
-                      >
-                        {copiedIndex === idx ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                      </button>
-                    )}
+                      <div className="absolute top-3 right-3 flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={() => handleCopyMessage(msg.content, idx)}
+                          className={`p-1.5 rounded-lg transition-colors ${
+                            msg.role === 'user'
+                              ? 'text-slate-950/70 hover:text-slate-955 bg-black/10'
+                              : 'text-slate-400 hover:text-amber-550 bg-slate-800/80'
+                          }`}
+                          title="Sao chép tin nhắn"
+                        >
+                          {copiedIndex === idx ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                        </button>
 
-
-                    {/* Agentic RAG Status Chain */}
-                    {msg.role === 'assistant' && msg.agentSteps && msg.agentSteps.length > 0 && (showThoughtProcess || msg.isStreaming) && (
-                      <div className="rag-node-trail mb-4 animate-fade-in">
-                        <span className="text-[10px] font-mono text-slate-500 uppercase flex items-center gap-1 font-bold mr-1">
-                          <Sparkles className="w-3 h-3 text-amber-500" />
-                          <span>RAG AGENT:</span>
-                        </span>
-                        {msg.agentSteps.map((step, sIdx) => {
-                          const isLast = sIdx === msg.agentSteps.length - 1 && msg.isStreaming
-                          const nodeNames = {
-                            router: '🧭 Router Phân loại',
-                            retriever: '🔍 Tìm kiếm Qdrant',
-                            grader: '🛡️ Kiểm chứng Grounding',
-                            generator: '💡 Kiến tạo lời giải',
-                            reject: '⚡ Trả lời trực tiếp',
-                            direct: '⚡ Trả lời trực tiếp'
-                          }
-                          const label = nodeNames[step.node] || step.node
-                          return (
-                            <React.Fragment key={sIdx}>
-                              <div className={`rag-node ${isLast ? 'active' : 'completed'}`} title={step.message}>
-                                <span>{label}</span>
-                              </div>
-                              {sIdx < msg.agentSteps.length - 1 && (
-                                <span className="rag-arrow font-mono text-xs">→</span>
-                              )}
-                            </React.Fragment>
-                          )
-                        })}
+                        {msg.role === 'assistant' && (
+                          <button
+                            onClick={() => handleBookmarkMessage(msg, idx)}
+                            className="p-1.5 rounded-lg transition-colors text-slate-400 hover:text-amber-400 bg-slate-800/80"
+                            title="Lưu vào Sổ tay kiến thức (Bookmark)"
+                          >
+                            {bookmarkedIndex === idx ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <BookmarkIcon className="w-3.5 h-3.5" />}
+                          </button>
+                        )}
                       </div>
                     )}
 
+
                     {/* Markdown Content */}
                     {msg.role === 'assistant' ? (
-                      <div className="prose prose-invert max-w-none text-sm leading-relaxed">
+                      <div
+                        className="prose prose-invert max-w-none text-sm leading-relaxed"
+                        onMouseUp={(e) => handleTextSelection(e, msg, idx)}
+                      >
                         {msg.content ? (
                           <ReactMarkdown
                             remarkPlugins={[remarkGfm]}
@@ -435,21 +454,24 @@ const ChatWindow = ({ sessionId, userId, onSessionUpdated }) => {
                       <p className="text-sm leading-relaxed whitespace-pre-wrap font-sans">{msg.content}</p>
                     )}
 
-                    {/* Reference Sources */}
+                    {/* Reference Sources (Collapsible by default) */}
                     {msg.sources && msg.sources.length > 0 && (
-                      <div className="mt-4 pt-3 border-t border-slate-800">
-                        <p className="text-xs font-semibold mb-2 text-slate-450 flex items-center gap-1.5 font-display">
-                          <BookOpen className="w-3.5 h-3.5 text-amber-500" />
-                          <span>Nguồn tài liệu RAG tham khảo:</span>
-                        </p>
-                        <div className="flex flex-wrap gap-1.5">
+                      <details className="mt-4 pt-3 border-t border-slate-800/80 group">
+                        <summary className="text-xs font-semibold text-slate-400 hover:text-amber-400 cursor-pointer flex items-center justify-between select-none font-display list-none bg-slate-900/40 hover:bg-slate-900/80 px-3 py-2 rounded-lg border border-slate-800/60 transition">
+                          <div className="flex items-center gap-2">
+                            <BookOpen className="w-3.5 h-3.5 text-amber-500" />
+                            <span>Nguồn tài liệu RAG tham khảo ({msg.sources.length})</span>
+                          </div>
+                          <span className="text-[10px] font-mono text-slate-500 group-open:rotate-180 transition-transform">▼</span>
+                        </summary>
+                        <div className="mt-2.5 flex flex-wrap gap-1.5 px-1 animate-fade-in">
                           {msg.sources.map((source, i) => (
                             <span key={i} className="inline-flex items-center px-2.5 py-1 rounded-lg bg-slate-900 text-amber-500 text-xs font-mono font-medium border border-slate-800">
                               {source}
                             </span>
                           ))}
                         </div>
-                      </div>
+                      </details>
                     )}
 
                     <p className={`text-[10px] font-mono mt-2.5 ${msg.role === 'user' ? 'text-slate-900/60' : 'text-slate-500'}`}>
@@ -461,6 +483,22 @@ const ChatWindow = ({ sessionId, userId, onSessionUpdated }) => {
             )}
             <div ref={messagesEndRef} />
           </div>
+
+          {/* Selection Highlight Tooltip */}
+          {selectionTooltip && (
+            <div
+              style={{ top: `${selectionTooltip.y}px`, left: `${selectionTooltip.x}px` }}
+              className="fixed z-50 transform -translate-x-1/2 -translate-y-full bg-slate-900 border border-amber-500/50 shadow-xl rounded-lg px-3 py-1.5 flex items-center space-x-2 animate-fade-in"
+            >
+              <button
+                onClick={() => handleBookmarkMessage(selectionTooltip.msg, selectionTooltip.idx, selectionTooltip.text)}
+                className="flex items-center space-x-1.5 text-xs text-amber-400 font-semibold hover:text-amber-300 transition"
+              >
+                <Star className="w-3.5 h-3.5 fill-amber-400" />
+                <span>⭐ Lưu Highlight vào Sổ tay</span>
+              </button>
+            </div>
+          )}
 
           {/* Input Area */}
           <div className="p-4 border-t border-slate-900 bg-[#0b0e14]/90 backdrop-blur-md">

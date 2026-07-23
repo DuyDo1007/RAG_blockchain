@@ -148,3 +148,64 @@ class QdrantVectorStore:
         col_name = collection_name or self.collection_name
         await self.async_client.delete_collection(collection_name=col_name)
         print(f"[Qdrant] Deleted collection '{col_name}'")
+
+    async def get_collection_info(self, collection_name: Optional[str] = None) -> Dict[str, Any]:
+        """Get vector count and status for a collection"""
+        col_name = collection_name or self.collection_name
+        try:
+            info = await self.async_client.get_collection(collection_name=col_name)
+            return {
+                "collection_name": col_name,
+                "points_count": getattr(info, "points_count", 0),
+                "vectors_count": getattr(info, "vectors_count", 0) or getattr(info, "points_count", 0),
+                "status": str(getattr(info, "status", "ok")),
+                "vector_size": getattr(getattr(info, "config", None), "params", {}).vectors.size if hasattr(info, "config") and hasattr(info.config, "params") and hasattr(info.config.params, "vectors") and hasattr(info.config.params.vectors, "size") else self.vector_size
+            }
+        except Exception as e:
+            return {
+                "collection_name": col_name,
+                "points_count": 0,
+                "vectors_count": 0,
+                "status": f"error or missing: {str(e)}",
+                "vector_size": self.vector_size
+            }
+
+    async def scroll_documents(self, limit: int = 50, offset: Optional[Any] = None, collection_name: Optional[str] = None) -> List[Dict[str, Any]]:
+        """Scroll through stored points and retrieve document payloads"""
+        col_name = collection_name or self.collection_name
+        try:
+            records, next_offset = await self.async_client.scroll(
+                collection_name=col_name,
+                limit=limit,
+                offset=offset,
+                with_payload=True,
+                with_vectors=False
+            )
+            docs = []
+            for r in records:
+                doc = dict(r.payload or {})
+                doc["point_id"] = str(r.id)
+                docs.append(doc)
+            return docs
+        except Exception as e:
+            print(f"[Qdrant] Scroll error: {e}")
+            return []
+
+    async def delete_point(self, point_id: Any, collection_name: Optional[str] = None) -> bool:
+        """Delete a point from Qdrant by point ID"""
+        col_name = collection_name or self.collection_name
+        try:
+            # Check if point_id is numeric or string
+            if isinstance(point_id, str) and point_id.isdigit():
+                pid = int(point_id)
+            else:
+                pid = point_id
+            await self.async_client.delete(
+                collection_name=col_name,
+                points_selector=[pid]
+            )
+            print(f"[Qdrant] Deleted point '{pid}' from '{col_name}'")
+            return True
+        except Exception as e:
+            print(f"[Qdrant] Delete point error: {e}")
+            return False

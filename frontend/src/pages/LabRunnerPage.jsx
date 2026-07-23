@@ -2,7 +2,6 @@ import React, { useState, useMemo, useEffect } from 'react'
 import axios from 'axios'
 import { FlaskConical, ArrowLeft, Search, Clock, Zap, Star, BookOpen, ChevronRight, Lock, ShieldCheck } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
-import { lessonsData, standaloneLabsData } from '../data/lessonsData'
 import LabWorkspace from '../components/LabWorkspace'
 
 const difficultyConfig = {
@@ -19,7 +18,7 @@ const categoryConfig = {
   defense: { label: 'Phòng thủ', color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' }
 }
 
-export default function LabRunnerPage({ lessons = lessonsData, refreshTrigger, onStartLab }) {
+export default function LabRunnerPage({ lessons = [], refreshTrigger, onStartLab }) {
   const { isGuest, user, getGuestProgress, completeGuestLesson } = useAuth()
   const [activeLab, setActiveLab] = useState(null)
   const [searchQuery, setSearchQuery] = useState('')
@@ -63,7 +62,7 @@ export default function LabRunnerPage({ lessons = lessonsData, refreshTrigger, o
         title: l.labTitle || `Lab: ${l.title}`,
         description: l.labDescription || l.description,
         difficulty: l.difficulty,
-        category: standaloneLabsData.find(s => s.relatedLessonId === l.id)?.category || 'general',
+        category: l.category || 'general',
         icon: l.icon,
         estimatedMinutes: l.duration_minutes,
         lessonData: l,
@@ -74,8 +73,8 @@ export default function LabRunnerPage({ lessons = lessonsData, refreshTrigger, o
   const filteredLabs = useMemo(() => {
     return allLabs.filter(lab => {
       const matchSearch = !searchQuery || 
-        lab.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        lab.description.toLowerCase().includes(searchQuery.toLowerCase())
+        (lab.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (lab.description || '').toLowerCase().includes(searchQuery.toLowerCase())
       const matchCategory = selectedCategory === 'all' || lab.category === selectedCategory
       return matchSearch && matchCategory
     })

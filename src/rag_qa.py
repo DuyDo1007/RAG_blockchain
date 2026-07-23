@@ -302,7 +302,7 @@ Tuy nhiên, dựa trên tài liệu bảo mật truy xuất từ cơ sở dữ l
     response += "\n*Vui lòng cập nhật `GEMINI_API_KEY` trong file `.env` để khôi phục đầy đủ trải nghiệm trò chuyện với AI.*"
     return response
 
-def generate_answer_with_gemini(query, docs, api_key=None, model='gemini-3.5-flash', chat_history=None):
+def generate_answer_with_gemini(query, docs, api_key=None, model='gemini-3.1-flash-lite-preview', chat_history=None):
     import time
     try:
         from google import genai
@@ -315,11 +315,14 @@ def generate_answer_with_gemini(query, docs, api_key=None, model='gemini-3.5-fla
     client = genai.Client(api_key=api_key)
     prompt = compose_prompt(query, docs, chat_history=chat_history)
     
-    max_retries = 3
-    for attempt in range(max_retries):
+    models_to_try = [model, 'gemini-3.1-flash-lite-preview', 'gemini-2.5-flash', 'gemini-flash-latest']
+    seen = set()
+    models_chain = [m for m in models_to_try if not (m in seen or seen.add(m))]
+
+    for target_model in models_chain:
         try:
             response = client.models.generate_content(
-                model=model,
+                model=target_model,
                 contents=prompt,
                 config=genai.types.GenerateContentConfig(
                     temperature=0.2,
@@ -335,21 +338,13 @@ def generate_answer_with_gemini(query, docs, api_key=None, model='gemini-3.5-fla
             return response.text
         except Exception as e:
             err_str = str(e)
-            is_quota_error = "429" in err_str or "quota" in err_str.lower() or "limit" in err_str.lower()
-            
-            if is_quota_error and attempt < max_retries - 1:
-                sleep_time = (2 ** attempt) + 1
-                time.sleep(sleep_time)
+            if "503" in err_str or "429" in err_str or "UNAVAILABLE" in err_str or "RESOURCE_EXHAUSTED" in err_str or "NOT_FOUND" in err_str:
                 continue
-            
-            if is_quota_error:
-                return generate_fallback_answer(query, docs)
-            
             return f'❌ Lỗi Gemini API: {err_str}'
             
     return generate_fallback_answer(query, docs)
 
-def generate_chat_title_with_gemini(query, api_key=None, model='gemini-3.5-flash'):
+def generate_chat_title_with_gemini(query, api_key=None, model='gemini-3.1-flash-lite-preview'):
     try:
         from google import genai
     except ImportError:
@@ -367,36 +362,42 @@ Không dùng dấu ngoặc kép, không thêm chữ "Tiêu đề: ", chỉ trả
 
 Câu hỏi: {query}
 """
-    try:
-        response = client.models.generate_content(
-            model=model,
-            contents=prompt,
-            config=genai.types.GenerateContentConfig(
-                temperature=0.3,
-                max_output_tokens=100
+    models_to_try = [model, 'gemini-3.1-flash-lite-preview', 'gemini-2.5-flash', 'gemini-flash-latest']
+    seen = set()
+    models_chain = [m for m in models_to_try if not (m in seen or seen.add(m))]
+
+    for target_model in models_chain:
+        try:
+            response = client.models.generate_content(
+                model=target_model,
+                contents=prompt,
+                config=genai.types.GenerateContentConfig(
+                    temperature=0.3,
+                    max_output_tokens=300
+                )
             )
-        )
-        title = response.text.strip().replace('"', '').replace("'", "")
-        # Remove common preambles from model output
-        prefixes = ["Tiêu đề:", "Tiêu đề cuộc trò chuyện:", "Tiêu đề là:", "Tiêu đề gợi ý:", "Trò chuyện:"]
-        for prefix in prefixes:
-            if title.lower().startswith(prefix.lower()):
-                title = title[len(prefix):].strip()
-        
-        words = title.split()
-        if len(words) > 6:
-            title = " ".join(words[:6]) + "..."
-        return title
-    except Exception:
-        words = query.strip().split()
-        fallback_title = " ".join(words[:4])
-        if len(words) > 4:
-            fallback_title += "..."
-        return fallback_title
+            title = response.text.strip().replace('"', '').replace("'", "")
+            # Remove common preambles from model output
+            prefixes = ["Tiêu đề:", "Tiêu đề cuộc trò chuyện:", "Tiêu đề là:", "Tiêu đề gợi ý:", "Trò chuyện:"]
+            for prefix in prefixes:
+                if title.lower().startswith(prefix.lower()):
+                    title = title[len(prefix):].strip()
+            
+            words = title.split()
+            if len(words) > 6:
+                title = " ".join(words[:6]) + "..."
+            return title
+        except Exception:
+            continue
 
+    words = query.strip().split()
+    fallback_title = " ".join(words[:4])
+    if len(words) > 4:
+        fallback_title += "..."
+    return fallback_title
 
-def generate_answer_streaming(query, docs, api_key=None, model='gemini-3.5-flash', chat_history=None):
-    """Generator function that yields chunks of text from Gemini stream API"""
+def generate_answer_streaming(query, docs, api_key=None, model='gemini-3.1-flash-lite-preview', chat_history=None):
+    """Generator function that yields chunks of text from Gemini stream API with automatic model fallback"""
     try:
         from google import genai
     except ImportError:
@@ -412,23 +413,42 @@ def generate_answer_streaming(query, docs, api_key=None, model='gemini-3.5-flash
     client = genai.Client(api_key=api_key)
     prompt = compose_prompt(query, docs, chat_history=chat_history)
 
-    try:
-        response_stream = client.models.generate_content_stream(
-            model=model,
-            contents=prompt,
-            config=genai.types.GenerateContentConfig(
-                temperature=0.2,
-                max_output_tokens=8192,
-                safety_settings=[
-                    {'category': 'HARM_CATEGORY_HATE_SPEECH', 'threshold': 'BLOCK_NONE'},
-                    {'category': 'HARM_CATEGORY_HARASSMENT', 'threshold': 'BLOCK_NONE'},
-                    {'category': 'HARM_CATEGORY_SEXUALLY_EXPLICIT', 'threshold': 'BLOCK_NONE'},
-                    {'category': 'HARM_CATEGORY_DANGEROUS_CONTENT', 'threshold': 'BLOCK_NONE'}
-                ]
+    models_to_try = [model, 'gemini-3.1-flash-lite-preview', 'gemini-2.5-flash', 'gemini-flash-latest']
+    seen = set()
+    models_chain = [m for m in models_to_try if not (m in seen or seen.add(m))]
+
+    last_err = None
+    for target_model in models_chain:
+        try:
+            response_stream = client.models.generate_content_stream(
+                model=target_model,
+                contents=prompt,
+                config=genai.types.GenerateContentConfig(
+                    temperature=0.2,
+                    max_output_tokens=8192,
+                    safety_settings=[
+                        {'category': 'HARM_CATEGORY_HATE_SPEECH', 'threshold': 'BLOCK_NONE'},
+                        {'category': 'HARM_CATEGORY_HARASSMENT', 'threshold': 'BLOCK_NONE'},
+                        {'category': 'HARM_CATEGORY_SEXUALLY_EXPLICIT', 'threshold': 'BLOCK_NONE'},
+                        {'category': 'HARM_CATEGORY_DANGEROUS_CONTENT', 'threshold': 'BLOCK_NONE'}
+                    ]
+                )
             )
-        )
-        for chunk in response_stream:
-            if chunk.text:
-                yield chunk.text
-    except Exception as e:
-        yield f"❌ Lỗi streaming từ Gemini: {str(e)}"
+            yielded_any = False
+            for chunk in response_stream:
+                if chunk.text:
+                    yielded_any = True
+                    yield chunk.text
+            if yielded_any:
+                return
+        except Exception as e:
+            last_err = e
+            err_str = str(e)
+            if "503" in err_str or "429" in err_str or "UNAVAILABLE" in err_str or "RESOURCE_EXHAUSTED" in err_str or "NOT_FOUND" in err_str:
+                continue
+            else:
+                yield f"❌ Lỗi streaming từ Gemini ({target_model}): {err_str}"
+                return
+
+    if last_err:
+        yield f"❌ Các model Gemini hiện đang bị quá tải (503/429). Vui lòng thử lại sau giây lát."

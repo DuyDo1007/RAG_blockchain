@@ -21,6 +21,7 @@ export default function AdminDashboard({ onLessonsUpdated }) {
     id: '',
     title: '',
     description: '',
+    content: '',
     category: 'fundamentals',
     difficulty: 'beginner',
     duration_minutes: 45,
@@ -32,12 +33,81 @@ export default function AdminDashboard({ onLessonsUpdated }) {
     quiz_questions: []
   })
 
+  // Qdrant Vector Studio States
+  const [qdrantStatus, setQdrantStatus] = useState(null)
+  const [qdrantDocs, setQdrantDocs] = useState([])
+  const [loadingQdrant, setLoadingQdrant] = useState(false)
+  const [uploadingQdrant, setUploadingQdrant] = useState(false)
+  const [qdrantSearch, setQdrantSearch] = useState('')
+
   useEffect(() => {
     fetchUsers()
     fetchLessons()
     fetchAnalytics()
     checkDbHealth()
+    fetchQdrantData()
   }, [])
+
+  const fetchQdrantData = async () => {
+    setLoadingQdrant(true)
+    try {
+      const token = localStorage.getItem('access_token')
+      const headers = token ? { Authorization: `Bearer ${token}` } : {}
+      const [statusRes, docsRes] = await Promise.all([
+        axios.get(`${API_BASE_URL}/admin/qdrant/status`, { headers }).catch(() => ({ data: null })),
+        axios.get(`${API_BASE_URL}/admin/qdrant/documents?limit=100`, { headers }).catch(() => ({ data: { documents: [] } }))
+      ])
+      if (statusRes.data) setQdrantStatus(statusRes.data)
+      if (docsRes.data) setQdrantDocs(docsRes.data.documents || [])
+    } catch (err) {
+      console.error('Error fetching qdrant studio data:', err)
+    } finally {
+      setLoadingQdrant(false)
+    }
+  }
+
+  const handleDeleteQdrantDoc = async (pointId) => {
+    if (!window.confirm(`Bạn có chắc chắn muốn xóa vector point ${pointId} từ Qdrant?`)) return
+    try {
+      const token = localStorage.getItem('access_token')
+      const headers = token ? { Authorization: `Bearer ${token}` } : {}
+      await axios.delete(`${API_BASE_URL}/admin/qdrant/documents/${pointId}`, { headers })
+      setQdrantDocs(prev => prev.filter(d => d.point_id !== pointId))
+      alert('Đã xóa vector point khỏi Qdrant.')
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Xóa thất bại.')
+    }
+  }
+
+  const handleUploadQdrant = async (file) => {
+    if (!file) return
+    setUploadingQdrant(true)
+    try {
+      const token = localStorage.getItem('access_token')
+      const headers = token ? { Authorization: `Bearer ${token}` } : {}
+      const formData = new FormData()
+      formData.append('file', file)
+      const res = await axios.post(`${API_BASE_URL}/admin/qdrant/upload`, formData, { headers })
+      alert(res.data.message || 'Ingest thành công!')
+      fetchQdrantData()
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Lỗi tải lên và ingest vector.')
+    } finally {
+      setUploadingQdrant(false)
+    }
+  }
+
+  const handleSyncAllQdrant = async () => {
+    if (!window.confirm('Khởi chạy tiến trình đồng bộ toàn bộ tài liệu RAG vào Qdrant?')) return
+    try {
+      const token = localStorage.getItem('access_token')
+      const headers = token ? { Authorization: `Bearer ${token}` } : {}
+      const res = await axios.post(`${API_BASE_URL}/admin/qdrant/sync_all`, {}, { headers })
+      alert(res.data.message || 'Đã bắt đầu đồng bộ')
+    } catch (err) {
+      alert('Lỗi chạy tiến trình đồng bộ RAG')
+    }
+  }
 
   const fetchUsers = async () => {
     setLoading(true)
@@ -142,6 +212,7 @@ export default function AdminDashboard({ onLessonsUpdated }) {
       id: `lesson-${String(lessons.length + 1).padStart(2, '0')}`,
       title: '',
       description: '',
+      content: '',
       category: 'fundamentals',
       difficulty: 'beginner',
       duration_minutes: 45,
@@ -161,6 +232,7 @@ export default function AdminDashboard({ onLessonsUpdated }) {
       id: lesson.id || '',
       title: lesson.title || '',
       description: lesson.description || '',
+      content: lesson.content || '',
       category: lesson.category || 'fundamentals',
       difficulty: lesson.difficulty || 'beginner',
       duration_minutes: lesson.duration_minutes || 45,
@@ -169,7 +241,7 @@ export default function AdminDashboard({ onLessonsUpdated }) {
       labDescription: lesson.labDescription || '',
       labStarterCode: lesson.labStarterCode || '',
       resources: (lesson.resources || []).join('\n'),
-      quiz_questions: lesson.quiz_questions || []
+      quiz_questions: lesson.quiz_questions || lesson.quiz || []
     })
     setShowModal(true)
   }
@@ -194,8 +266,10 @@ export default function AdminDashboard({ onLessonsUpdated }) {
     e.preventDefault()
     const finalLessonData = {
       ...formData,
-      duration_minutes: parseInt(formData.duration_minutes),
-      resources: formData.resources.split('\n').filter(r => r.trim() !== '')
+      quiz: formData.quiz_questions,
+      quizEnabled: formData.quiz_questions.length > 0,
+      duration_minutes: parseInt(formData.duration_minutes) || 45,
+      resources: typeof formData.resources === 'string' ? formData.resources.split('\n').filter(r => r.trim() !== '') : (formData.resources || [])
     }
 
     setActionLoading('saving')
@@ -206,12 +280,11 @@ export default function AdminDashboard({ onLessonsUpdated }) {
       if (editingLesson) {
         // Edit Mode
         await axios.put(`${API_BASE_URL}/admin/lessons/${editingLesson.id}`, finalLessonData, { headers })
-        setLessons(prev => prev.map(l => l.id === editingLesson.id ? { ...l, ...finalLessonData } : l))
       } else {
         // Create Mode
-        const res = await axios.post(`${API_BASE_URL}/admin/lessons`, finalLessonData, { headers })
-        setLessons(prev => [...prev, finalLessonData])
+        await axios.post(`${API_BASE_URL}/admin/lessons`, finalLessonData, { headers })
       }
+      await fetchLessons()
       setShowModal(false)
       if (onLessonsUpdated) onLessonsUpdated()
     } catch (err) {
@@ -288,6 +361,20 @@ export default function AdminDashboard({ onLessonsUpdated }) {
         >
           <BookOpen className="w-4 h-4" />
           <span>Bài Học & Lab ({lessons.length})</span>
+        </button>
+        <button
+          onClick={() => {
+            setActiveSubTab('qdrant')
+            fetchQdrantData()
+          }}
+          className={`flex items-center gap-2 px-5 py-3 border-b-2 font-display text-sm font-bold tracking-wide transition-all ${
+            activeSubTab === 'qdrant'
+              ? 'border-amber-500 text-amber-500'
+              : 'border-transparent text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <Database className="w-4 h-4 text-cyan-400" />
+          <span>🧠 Qdrant Vector Studio</span>
         </button>
       </div>
 
@@ -520,6 +607,131 @@ export default function AdminDashboard({ onLessonsUpdated }) {
         </div>
       )}
 
+      {/* Qdrant Vector Studio Tab */}
+      {activeSubTab === 'qdrant' && (
+        <div className="space-y-6">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-gradient-to-r from-slate-900 via-slate-900/60 to-slate-900 border border-slate-800 p-6 rounded-2xl">
+            <div>
+              <h3 className="text-base font-bold font-display text-cyan-400 flex items-center gap-2">
+                <Database className="w-5 h-5" />
+                <span>Qdrant No-CLI Vector Studio (Trực Tiếp)</span>
+              </h3>
+              <p className="text-xs text-slate-400 font-mono mt-1">
+                Quản lý các điểm vector (points), nạp trực tiếp tài liệu Markdown hoặc JSON vào Qdrant không cần chạy lệnh terminal.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <label className="flex items-center gap-2 px-4 py-2.5 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 rounded-xl font-display text-xs font-bold cursor-pointer transition shadow-sm">
+                {uploadingQdrant ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                <span>{uploadingQdrant ? 'Đang nhúng vector...' : 'Tải File (.md / .json) Nạp Vector'}</span>
+                <input
+                  type="file"
+                  accept=".md,.json,.csv"
+                  onChange={(e) => handleUploadQdrant(e.target.files?.[0])}
+                  disabled={uploadingQdrant}
+                  className="hidden"
+                />
+              </label>
+
+              <button
+                onClick={handleSyncAllQdrant}
+                className="flex items-center gap-2 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl font-display text-xs font-bold transition shadow-sm"
+              >
+                <Sparkles className="w-4 h-4 text-amber-400" />
+                <span>🔄 Chạy Đồng Bộ Lại All RAG</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Status Metrics */}
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+            <div className="p-4 bg-slate-900/60 border border-slate-800 rounded-xl">
+              <span className="text-[10px] font-mono text-slate-500 block uppercase">Collection</span>
+              <span className="text-base font-bold font-display text-slate-200 mt-1 block truncate">
+                {qdrantStatus?.collection_name || 'blockchain_education'}
+              </span>
+            </div>
+            <div className="p-4 bg-slate-900/60 border border-slate-800 rounded-xl">
+              <span className="text-[10px] font-mono text-slate-500 block uppercase">Số Điểm Vector (Points)</span>
+              <span className="text-xl font-bold font-display text-amber-400 mt-1 block">
+                {qdrantStatus?.points_count || qdrantDocs.length || 0} <span className="text-xs text-slate-500 font-mono">points</span>
+              </span>
+            </div>
+            <div className="p-4 bg-slate-900/60 border border-slate-800 rounded-xl">
+              <span className="text-[10px] font-mono text-slate-500 block uppercase">Kích thước (Dimensions)</span>
+              <span className="text-xl font-bold font-display text-cyan-400 mt-1 block">
+                {qdrantStatus?.vector_size || 768} <span className="text-xs text-slate-500 font-mono">dim (CodeBERT)</span>
+              </span>
+            </div>
+            <div className="p-4 bg-slate-900/60 border border-slate-800 rounded-xl">
+              <span className="text-[10px] font-mono text-slate-500 block uppercase">Trạng Thái Server</span>
+              <span className="text-base font-bold font-display text-emerald-400 mt-1 block uppercase">
+                {qdrantStatus?.status || 'ONLINE'}
+              </span>
+            </div>
+          </div>
+
+          {/* Search / Filter box */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-b border-slate-800 pb-4">
+            <span className="text-xs font-mono text-slate-400 font-bold uppercase tracking-wider">
+              Danh Sách Vectors Đã Nạp ({qdrantDocs.length})
+            </span>
+            <input
+              type="text"
+              placeholder="Lọc vector theo ID hoặc Tiêu đề..."
+              value={qdrantSearch}
+              onChange={(e) => setQdrantSearch(e.target.value)}
+              className="w-full sm:w-72 bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-slate-200 font-mono focus:border-amber-500/50 outline-none"
+            />
+          </div>
+
+          {/* Document Cards Table */}
+          {loadingQdrant ? (
+            <div className="flex justify-center py-16">
+              <Loader2 className="w-8 h-8 text-cyan-400 animate-spin" />
+            </div>
+          ) : qdrantDocs.length === 0 ? (
+            <div className="text-center py-16 text-slate-500 text-sm italic border border-slate-850 rounded-2xl bg-slate-900/20">
+              Chưa tải được danh sách vector points từ Qdrant hoặc collection rỗng.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {qdrantDocs
+                .filter(d => (d.title || '' + d.point_id || '' + d.content || '').toLowerCase().includes(qdrantSearch.toLowerCase()))
+                .map((doc, idx) => (
+                  <div key={doc.point_id || idx} className="p-4 bg-slate-900/40 border border-slate-800 rounded-xl space-y-2 relative hover:border-slate-700 transition group">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <span className="text-[10px] font-mono text-cyan-400 font-bold bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20">
+                          ID: {doc.point_id}
+                        </span>
+                        <h4 className="text-sm font-bold font-display text-slate-100 truncate mt-1.5">{doc.title || 'Untitled Chunk'}</h4>
+                      </div>
+                      <button
+                        onClick={() => handleDeleteQdrantDoc(doc.point_id)}
+                        className="p-1.5 text-slate-500 hover:text-rose-450 rounded-lg hover:bg-rose-500/10 transition"
+                        title="Xóa vector này"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    <p className="text-xs text-slate-400 font-sans leading-relaxed line-clamp-3">
+                      {doc.content}
+                    </p>
+
+                    <div className="flex items-center justify-between pt-2 border-t border-slate-850 text-[10px] font-mono text-slate-500">
+                      <span>Nguồn: {doc.source_file || doc.contract_name || 'RAG Education'}</span>
+                      <span className="text-amber-400/80 capitalize">{doc.chunk_type || 'markdown_section'}</span>
+                    </div>
+                  </div>
+                ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Lesson Add/Edit Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fade-in">
@@ -562,7 +774,7 @@ export default function AdminDashboard({ onLessonsUpdated }) {
               </div>
 
               <div>
-                <label className="block text-xs font-mono text-slate-500 mb-1.5 uppercase">Mô tả bài học</label>
+                <label className="block text-xs font-mono text-slate-500 mb-1.5 uppercase">Mô tả tóm tắt bài học</label>
                 <textarea
                   required
                   rows={2}
@@ -570,6 +782,17 @@ export default function AdminDashboard({ onLessonsUpdated }) {
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   placeholder="Mô tả nội dung tóm tắt của bài học..."
                   className="w-full bg-slate-900 border border-slate-800 rounded-xl py-2 px-3 text-sm text-slate-100 focus:border-amber-500/50 transition-all font-sans"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-mono text-slate-500 mb-1.5 uppercase">Nội dung lý thuyết (Markdown - Visual Editor)</label>
+                <textarea
+                  rows={6}
+                  value={formData.content}
+                  onChange={(e) => setFormData({ ...formData, content: e.target.value })}
+                  placeholder="## 1. Giới thiệu&#10;Giải thích chi tiết lý thuyết bằng Markdown kèm block code..."
+                  className="w-full bg-slate-900 border border-slate-800 rounded-xl py-2 px-3 text-xs text-slate-100 focus:border-amber-500/50 transition-all font-mono"
                 />
               </div>
 

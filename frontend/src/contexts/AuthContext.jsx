@@ -128,15 +128,12 @@ export function AuthProvider({ children }) {
     fetchMe()
   }, [token])
 
-  const saveTokensAndFetchUser = async (access, refresh) => {
-    localStorage.setItem('access_token', access)
-    localStorage.setItem('refresh_token', refresh)
-    localStorage.removeItem('guest_mode') // Clear guest mode on real login
-    setToken(access)
-    setRefreshTokenStr(refresh)
+  const refreshUser = async () => {
+    const storedToken = localStorage.getItem('access_token')
+    if (!storedToken) return
     try {
       const res = await axios.get(`${API_BASE_URL}/auth/me`, {
-        headers: { Authorization: `Bearer ${access}` }
+        headers: { Authorization: `Bearer ${storedToken}` }
       })
       const userData = res.data
       if (!userData.role) {
@@ -144,8 +141,17 @@ export function AuthProvider({ children }) {
       }
       setUser(userData)
     } catch (e) {
-      console.error('Failed to fetch user after login', e)
+      console.error('Failed to refresh user', e)
     }
+  }
+
+  const saveTokensAndFetchUser = async (access, refresh) => {
+    localStorage.setItem('access_token', access)
+    localStorage.setItem('refresh_token', refresh)
+    localStorage.removeItem('guest_mode') // Clear guest mode on real login
+    setToken(access)
+    setRefreshTokenStr(refresh)
+    await refreshUser()
   }
 
   const login = async (email, password) => {
@@ -225,6 +231,7 @@ export function AuthProvider({ children }) {
         isGuest: user?.role === ROLES.GUEST,
         isAdmin: user?.role === ROLES.ADMIN,
         role: user?.role || null,
+        refreshUser,
         login,
         register,
         loginWithGoogle,

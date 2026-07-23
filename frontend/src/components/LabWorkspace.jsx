@@ -154,7 +154,7 @@ const getLessonDetails = (lesson) => {
         description: defaultDesc,
         files: [
           { name: 'VulnerableBank.sol', isWritable: false, defaultCode: vulnerableContractCode, language: 'solidity', label: 'LỖ HỔNG', badgeType: 'error' },
-          { name: 'Attack.sol', isWritable: true, defaultCode: lesson.labStarterCode || defaultAttackerCode, language: 'solidity', label: 'SOẠN THẢO', badgeType: 'warning' }
+          { name: 'Attack.sol', isWritable: true, defaultCode: defaultAttackerCode, language: 'solidity', label: 'SOẠN THẢO', badgeType: 'warning' }
         ],
         hints: [
           "Gợi ý 1: Trong hàm attack(), gọi bank.deposit{value: 1 ether}() rồi bank.withdraw().",
@@ -543,9 +543,14 @@ export default function LabWorkspace({ lesson, onClose, onComplete }) {
     return lessonDetails.files.find(f => f.name === activeFile) || lessonDetails.files[0];
   }, [activeFile, lessonDetails]);
 
-  const [attackerCode, setAttackerCode] = useState(() => {
-    const writableFile = lessonDetails.files.find(f => f.isWritable);
-    return writableFile ? writableFile.defaultCode : '';
+  const [filesCode, setFilesCode] = useState(() => {
+    const map = {};
+    if (lessonDetails?.files) {
+      lessonDetails.files.forEach(f => {
+        map[f.name] = f.defaultCode;
+      });
+    }
+    return map;
   });
 
   const [activeRightTab, setActiveRightTab] = useState('instructions') // 'instructions' | 'console'
@@ -560,9 +565,18 @@ export default function LabWorkspace({ lesson, onClose, onComplete }) {
 
   useEffect(() => {
     // Reset workspace when lesson changes
-    const writableFile = lessonDetails.files.find(f => f.isWritable);
-    setAttackerCode(writableFile ? writableFile.defaultCode : '');
-    setActiveFile(lesson.id === 'lesson-03' ? 'VulnerableBank.sol' : lessonDetails.files[0].name);
+    const map = {};
+    if (lessonDetails?.files) {
+      lessonDetails.files.forEach(f => {
+        map[f.name] = f.defaultCode;
+      });
+    }
+    setFilesCode(map);
+    if (lesson.id === 'lesson-03') {
+      setActiveFile('VulnerableBank.sol');
+    } else if (lessonDetails?.files && lessonDetails.files.length > 0) {
+      setActiveFile(lessonDetails.files[0].name);
+    }
     setLabStatus('idle');
     setConsoleLogs([]);
     setShowHint(false);
@@ -583,8 +597,13 @@ export default function LabWorkspace({ lesson, onClose, onComplete }) {
 
   const handleResetCode = () => {
     if (window.confirm("Bạn có chắc chắn muốn reset lại code ban đầu không?")) {
-      const writableFile = lessonDetails.files.find(f => f.isWritable);
-      setAttackerCode(writableFile ? writableFile.defaultCode : '');
+      const map = {};
+      if (lessonDetails?.files) {
+        lessonDetails.files.forEach(f => {
+          map[f.name] = f.defaultCode;
+        });
+      }
+      setFilesCode(map);
       writeLog("[System] Code đã được khôi phục về mặc định.", "warning")
     }
   }
@@ -597,8 +616,9 @@ export default function LabWorkspace({ lesson, onClose, onComplete }) {
     setLastErrorTrace('');
 
     const currentLanguage = lesson?.labType === 'solidity' ? 'solidity' : (activeFile.endsWith('.py') ? 'python' : 'solidity');
-    const starterCode = (lessonDetails.files.find(f => f.isWritable) || activeFileDetail)?.defaultCode || lesson?.labStarterCode || '';
-    const structCheck = validateCodeStructure(attackerCode, currentLanguage, starterCode);
+    const allFilesCode = lessonDetails.files.map(f => filesCode[f.name] !== undefined ? filesCode[f.name] : f.defaultCode).join('\n\n');
+    const starterCode = lessonDetails.files.map(f => f.defaultCode).join('\n\n');
+    const structCheck = validateCodeStructure(allFilesCode, currentLanguage, starterCode);
 
     // 1. AST & Structural check on frontend
     if (!structCheck.success) {
@@ -628,7 +648,7 @@ export default function LabWorkspace({ lesson, onClose, onComplete }) {
 
       const response = await axios.post('/api/lab/grade', {
         lesson_id: lesson?.id || 'default',
-        code: attackerCode,
+        code: allFilesCode,
         language: currentLanguage,
         lab_title: lessonDetails?.title || '',
         lab_description: lessonDetails?.description || '',
@@ -680,7 +700,8 @@ export default function LabWorkspace({ lesson, onClose, onComplete }) {
       }
     } catch (apiError) {
       writeLog("[Sandbox fallback] Kiểm định máy chủ gián đoạn, khởi chạy bộ kiểm thử tĩnh tại trình duyệt...", "info");
-      const evaluation = lessonDetails.verify(attackerCode);
+      const allFilesCode = lessonDetails.files.map(f => filesCode[f.name] !== undefined ? filesCode[f.name] : f.defaultCode).join('\n\n');
+      const evaluation = lessonDetails.verify(allFilesCode);
       let delay = 600;
       evaluation.logs.forEach((logItem, index) => {
         setTimeout(() => {
@@ -715,45 +736,53 @@ export default function LabWorkspace({ lesson, onClose, onComplete }) {
 
   const handleAIAutoFix = async () => {
     setActiveRightTab('console');
+    const allFilesCode = lessonDetails.files.map(f => filesCode[f.name] !== undefined ? filesCode[f.name] : f.defaultCode).join('\n\n');
+    const currentLanguage = lesson?.labType === 'solidity' ? 'solidity' : (activeFile.endsWith('.py') ? 'python' : 'solidity');
 
-    if (!lastErrorTrace) {
-      writeLog("[AI Mentor] Đang phân tích mã nguồn và gợi ý cách sửa đổi...", "warning");
-    } else {
+    if (lastErrorTrace) {
       writeLog("[AI Mentor] Đang kết nối giảng viên AI để đọc log lỗi (Traceback) và giải thích nguyên nhân...", "warning");
-    }
+      try {
+        const token = localStorage.getItem("token");
+        const headers = token ? { Authorization: `Bearer ${token}` } : {};
+        const response = await axios.post('/api/lab/ai_mentor', {
+          lesson_id: lesson?.id || 'default',
+          code: allFilesCode,
+          language: currentLanguage,
+          lab_title: lessonDetails?.title || '',
+          lab_description: lessonDetails?.description || '',
+          error_traceback: lastErrorTrace
+        }, { headers, timeout: 25000 });
 
-    try {
-      const token = localStorage.getItem("token");
-      const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      const currentLanguage = lesson?.labType === 'solidity' ? 'solidity' : (activeFile.endsWith('.py') ? 'python' : 'solidity');
-
-      const response = await axios.post('/api/lab/ai_mentor', {
-        lesson_id: lesson?.id || 'default',
-        code: attackerCode,
-        language: currentLanguage,
-        lab_title: lessonDetails?.title || '',
-        lab_description: lessonDetails?.description || '',
-        error_traceback: lastErrorTrace || "Yêu cầu gợi ý sửa code"
-      }, { headers, timeout: 25000 });
-
-      const data = response.data;
-      if (data.success) {
+        const data = response.data;
         writeLog("==========================================", "info");
         writeLog("🤖 [AI MENTOR PHÂN TÍCH LỖI & GỢI Ý]", "warning");
-        writeLog(`📖 Nguyên nhân: ${data.explanation}`, "error");
-        writeLog(`💡 Hướng dẫn sửa: ${data.hint}`, "success");
+        writeLog(`📖 Nguyên nhân: ${data.explanation || 'Đã phân tích xong lỗi.'}`, "error");
+        writeLog(`💡 Hướng dẫn sửa: ${data.hint || 'Hãy kiểm tra lại logic trong hợp đồng.'}`, "success");
         if (data.suggested_snippet) {
           writeLog(`📝 Cú pháp tham khảo:\n${data.suggested_snippet}`, "info");
         }
         writeLog("==========================================", "info");
-        return;
+      } catch (err) {
+        writeLog("==========================================", "info");
+        writeLog("🤖 [AI MENTOR - GỢI Ý HỌC TẬP]", "warning");
+        writeLog("⚠️ Chưa kết nối được trực tiếp tới AI Mentor server. Dưới đây là gợi ý từ bài lab:", "error");
+        if (lessonDetails?.hints) {
+          lessonDetails.hints.forEach((h) => writeLog(`💡 ${h}`, "success"));
+        } else {
+          writeLog("💡 Hãy kiểm tra kỹ lại thông báo lỗi và cấu trúc hợp đồng theo yêu cầu đề bài.", "warning");
+        }
+        writeLog("==========================================", "info");
       }
-    } catch (err) {
-      writeLog("[AI Mentor fallback] Chuyển sang chế độ tự động sửa lỗi cục bộ...", "info");
+      // Clear error trace so subsequent click will trigger Auto-Fix
+      setLastErrorTrace('');
+      writeLog("🪄 (Gợi ý: Nếu vẫn chưa tự sửa được, bạn có thể nhấn nút '🪄 AI Mentor / Auto-Fix' thêm lần nữa để tự động sửa lỗi hoàn chỉnh!)", "warning");
+      return;
     }
 
+    writeLog("[AI Mentor] Đang khởi chạy tự động sửa lỗi & hoàn thiện mã nguồn chuẩn...", "warning");
+
     setTimeout(() => {
-      let fixedCode = attackerCode
+      let fixedCode = '';
       if (lesson.id === 'lesson-01') {
         fixedCode = `# Lab: Xây dựng Blockchain đơn giản (AI Fixed)
 import hashlib
@@ -793,7 +822,7 @@ class Blockchain:
             if current.previous_hash != previous.hash:
                 return False
         return True
-`
+`;
       } else if (lesson.id === 'lesson-02') {
         fixedCode = `// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
@@ -809,6 +838,7 @@ contract SimpleStorage {
     }
     
     function set(uint256 _value) public {
+        require(msg.sender == owner, "Only owner can set value");
         uint256 old = storedValue;
         storedValue = _value;
         emit ValueChanged(old, _value, msg.sender);
@@ -818,7 +848,7 @@ contract SimpleStorage {
         return storedValue;
     }
 }
-`
+`;
       } else if (lesson.id === 'lesson-03') {
         fixedCode = `// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
@@ -828,7 +858,7 @@ interface IVulnerableBank {
     function withdraw() external;
 }
 
-contract BankAttacker {
+contract Attack {
     IVulnerableBank public bank;
     uint256 public constant ATTACK_AMOUNT = 1 ether;
 
@@ -852,7 +882,37 @@ contract BankAttacker {
         payable(msg.sender).transfer(address(this).balance);
     }
 }
-`
+`;
+      } else if (lesson.id === 'lesson-04') {
+        fixedCode = `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+library SafeMath {
+    function mul(uint256 a, uint256 b) internal pure returns (uint256) {
+        if (a == 0) return 0;
+        uint256 c = a * b;
+        require(c / a == b, "SafeMath: multiplication overflow");
+        return c;
+    }
+    function add(uint256 a, uint256 b) internal pure returns (uint256) {
+        uint256 c = a + b;
+        require(c >= a, "SafeMath: addition overflow");
+        return c;
+    }
+}
+
+contract TokenSale {
+    using SafeMath for uint256;
+    mapping(address => uint256) public balanceOf;
+    uint256 public price = 1 ether;
+
+    function buy(uint256 tokens) public payable {
+        uint256 cost = tokens.mul(price);
+        require(msg.value >= cost, "Not enough ETH sent");
+        balanceOf[msg.sender] = balanceOf[msg.sender].add(tokens);
+    }
+}
+`;
       } else if (lesson.id === 'lesson-05') {
         fixedCode = `// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
@@ -885,8 +945,132 @@ contract SecureVault {
         require(_admin != owner, "Cannot remove owner");
         admins[_admin] = false;
     }
+
+    function withdraw(uint256 amount) public onlyOwner {
+        require(address(this).balance >= amount, "Insufficient balance");
+        payable(msg.sender).transfer(amount);
+    }
 }
-`
+`;
+      } else if (lesson.id === 'lesson-06') {
+        fixedCode = `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+interface IERC3156FlashBorrower {
+    function onFlashLoan(address initiator, address token, uint256 amount, uint256 fee, bytes calldata data) external returns (bytes32);
+}
+
+interface IERC3156FlashLender {
+    function flashLoan(IERC3156FlashBorrower receiver, address token, uint256 amount, bytes calldata data) external returns (bool);
+}
+
+contract FlashLoanReceiver is IERC3156FlashBorrower {
+    IERC3156FlashLender public lender;
+
+    constructor(address _lender) {
+        lender = IERC3156FlashLender(_lender);
+    }
+
+    function executeFlashLoan(address token, uint256 amount) external {
+        lender.flashLoan(this, token, amount, "");
+    }
+
+    function onFlashLoan(address initiator, address token, uint256 amount, uint256 fee, bytes calldata data) external override returns (bytes32) {
+        return keccak256("ERC3156FlashBorrower.onFlashLoan");
+    }
+}
+`;
+      } else if (lesson.id === 'lesson-07') {
+        fixedCode = `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract TWAPOracle {
+    uint256 public priceAverage;
+    uint256 public cumulativePrice;
+    uint256 public lastUpdateTimestamp;
+
+    function updatePrice(uint256 newCumulativePrice) public {
+        uint256 timeElapsed = block.timestamp - lastUpdateTimestamp;
+        require(timeElapsed > 0, "Time elapsed must be greater than 0");
+        
+        cumulativePrice = newCumulativePrice;
+        priceAverage = cumulativePrice / timeElapsed;
+        lastUpdateTimestamp = block.timestamp;
+    }
+}
+`;
+      } else if (lesson.id === 'lesson-08') {
+        fixedCode = `# Lab: Phát hiện Sandwich Attack trong Mempool
+def detect_sandwich_attack(tx_list):
+    if len(tx_list) < 3:
+        return None
+    for i in range(len(tx_list) - 2):
+        tx1 = tx_list[i]
+        tx2 = tx_list[i+1]
+        tx3 = tx_list[i+2]
+        if tx1['sender'] == tx3['sender'] and tx1['type'] == 'buy' and tx3['type'] == 'sell':
+            if tx1['gas_price'] > tx2['gas_price'] > tx3['gas_price']:
+                return {
+                    'front_runner': tx1,
+                    'victim': tx2,
+                    'back_runner': tx3
+                }
+    return None
+`;
+      } else if (lesson.id === 'lesson-09') {
+        fixedCode = `# Lab: Phân tích Smart Contract phát hiện Phishing / Cấp quyền nguy hiểm
+def analyze_contract(code):
+    warnings = []
+    if 'approve(' in code or '.approve' in code:
+        warnings.append("phishing warning: approve detected - có rủi ro bị rút cạn token.")
+    if 'setApprovalForAll' in code:
+        warnings.append("phishing warning: setApprovalForAll detected - cẩn thận cấp toàn bộ quyền NFT.")
+    return warnings if warnings else None
+`;
+      } else if (lesson.id === 'lesson-10') {
+        fixedCode = `# Lab: Kiểm toán Smart Contract bằng Python
+def audit_contract(code):
+    vulnerabilities = []
+    code_lower = code.lower()
+    if 'block.timestamp' in code_lower or 'random' in code_lower:
+        vulnerabilities.append("Weak Randomness: Sử dụng block.timestamp làm nguồn sinh số ngẫu nhiên dễ bị thao túng bởi Miner.")
+    if 'msg.sender.transfer' in code_lower and 'onlyowner' not in code_lower and 'require(msg.sender == owner)' not in code_lower:
+        vulnerabilities.append("Access Control: Hàm chuyển tiền/transfer thiếu kiểm tra quyền sở hữu onlyOwner.")
+    return vulnerabilities
+`;
+      } else if (lesson.id === 'lesson-11') {
+        fixedCode = `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract LendingPool {
+    mapping(address => uint256) public collateral;
+    mapping(address => uint256) public debt;
+    uint256 public constant COLLATERAL_RATIO = 150; // 150%
+    uint256 public constant LIQUIDATION_THRESHOLD = 100;
+
+    function borrow(uint256 amount) public {
+        uint256 maxBorrow = (collateral[msg.sender] * 100) / COLLATERAL_RATIO;
+        require(debt[msg.sender] + amount <= maxBorrow, "Exceeds max borrow limit based on COLLATERAL_RATIO");
+        debt[msg.sender] += amount;
+    }
+
+    function liquidate(address user) public {
+        uint256 healthFactor = (collateral[user] * 100) / (debt[user] == 0 ? 1 : debt[user]);
+        require(healthFactor < LIQUIDATION_THRESHOLD, "Cannot liquidate: health factor above LIQUIDATION_THRESHOLD");
+        debt[user] = 0;
+    }
+}
+`;
+      } else if (lesson.id === 'lesson-12') {
+        fixedCode = `# Lab: Phát hiện Token Rug Pull / Honeypot
+def analyze_token(meta):
+    flags = []
+    if meta.get("buy_tax", 0) > 20 or meta.get("sell_tax", 0) > 20:
+        flags.append("High Tax Scam/Honeypot: Thuế mua/bán quá cao, rủi ro không thể bán được token.")
+    if meta.get("owner_can_mint", False):
+        flags.append("Mint Risk: Chủ sở hữu có quyền in thêm token vô hạn (Mint Flag).")
+    return flags if flags else None
+`;
       } else if (lesson.id === 'lesson-13') {
         fixedCode = `// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
@@ -919,31 +1103,30 @@ contract VulnerableVault {
         return (totalAssets * 1e18) / totalShares;
     }
 }
-`
+`;
       } else if (lesson.id === 'lesson-14') {
         fixedCode = `// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-contract ProxyContract {
-    address public implementation; // Slot 0
-    address public owner;          // Slot 1
+contract ProxyStorage {
+    address public owner;          // Slot 0
+    address public implementation; // Slot 1
     
-    constructor(address _impl) {
-        implementation = _impl;
-        owner = msg.sender;
+    modifier onlyOwner() {
+        require(msg.sender == owner, "Not owner");
+        _;
     }
-}
 
-contract LogicContract {
-    address public implementation; // Slot 0
-    address public owner;          // Slot 1
-    uint256 public count;          // Slot 2
-    
-    function initialize(address _owner) public {
-        owner = _owner;
+    constructor(address _impl) {
+        owner = msg.sender;
+        implementation = _impl;
+    }
+
+    function upgrade(address _newImpl) public onlyOwner {
+        implementation = _newImpl;
     }
 }
-`
+`;
       } else if (lesson.id === 'lesson-15') {
         fixedCode = `// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
@@ -965,12 +1148,13 @@ contract SecureSignatureVerifier {
     }
 
     function verify(address signer, uint256 amount, uint256 nonce, bytes memory signature) public returns (bool) {
+        require(signer != address(0), "Invalid signer");
         require(nonce == nonces[signer], "Invalid or replayed nonce");
         nonces[signer]++;
         return true;
     }
 }
-`
+`;
       } else if (lesson.id === 'lesson-16') {
         fixedCode = `// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
@@ -985,20 +1169,31 @@ contract CrossChainBridge {
         _;
     }
 
-    function processMessage(bytes32 msgHash, address recipient, uint256 amount) external whenNotPaused {
+    function receiveMessage(bytes32 msgHash, address recipient, uint256 amount) external whenNotPaused {
         require(!processedMessages[msgHash], "Message already processed");
         processedMessages[msgHash] = true; // Đánh dấu đã xử lý chống Replay
         
-        payable(recipient).transfer(amount);
+        mintToken();
+    }
+
+    function mintToken() internal {
+        // Minting logic
     }
 }
-`
+`;
+      } else {
+        const targetDetail = lessonDetails.files.find(f => f.isWritable) || activeFileDetail;
+        fixedCode = targetDetail?.defaultCode || '';
       }
 
-      setAttackerCode(fixedCode)
-      writeLog("[AI Mentor] ✅ Đã hoàn tất tự động sửa mã nguồn! Bạn có thể bấm RUN CODE để xác minh.", "success")
-    }, 1000)
-  }
+      const targetFile = lessonDetails.files.find(f => f.isWritable)?.name || activeFile;
+      setFilesCode(prev => ({
+        ...prev,
+        [targetFile]: fixedCode
+      }));
+      writeLog("[AI Mentor] ✅ Đã hoàn tất tự động sửa mã nguồn! Bạn có thể bấm RUN CODE để xác minh.", "success");
+    }, 1000);
+  };
 
 
 
@@ -1082,10 +1277,13 @@ contract CrossChainBridge {
               height="100%"
               language={activeFileDetail.language}
               theme="vs-dark"
-              value={!activeFileDetail.isWritable ? activeFileDetail.defaultCode : attackerCode}
+              value={filesCode[activeFile] !== undefined ? filesCode[activeFile] : activeFileDetail.defaultCode}
               onChange={(val) => {
                 if (activeFileDetail.isWritable) {
-                  setAttackerCode(val || '');
+                  setFilesCode(prev => ({
+                    ...prev,
+                    [activeFile]: val || ''
+                  }));
                 }
               }}
               options={{

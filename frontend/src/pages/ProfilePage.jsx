@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { User, Mail, Shield, Calendar, Edit2, Check, Trash2, Award, Zap, BookOpen, Clock, Loader2, Sparkles } from 'lucide-react'
+import { User, Mail, Shield, Calendar, Edit2, Check, Trash2, Award, Zap, BookOpen, Clock, Loader2, Sparkles, Bookmark as BookmarkIcon, Flame, Search, Star, Trophy } from 'lucide-react'
 import axios from 'axios'
 import { useAuth } from '../contexts/AuthContext'
 
@@ -16,7 +16,7 @@ const DEFAULT_AVATARS = [
   { name: 'Chain Master', url: 'https://api.dicebear.com/7.x/bottts/svg?seed=blockchain' }
 ]
 
-export default function ProfilePage({ lessons = [] }) {
+export default function ProfilePage({ lessons = [], onNavigateToChat }) {
   const { user, logout, isGuest } = useAuth()
   const [username, setUsername] = useState('')
   const [avatarUrl, setAvatarUrl] = useState('')
@@ -29,19 +29,61 @@ export default function ProfilePage({ lessons = [] }) {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
-  // Progress Stats
+  // Progress Stats & Tabs
+  const [activeTab, setActiveTab] = useState('overview')
   const [progress, setProgress] = useState(null)
   const [loadingProgress, setLoadingProgress] = useState(true)
+
+  // Bookmarks
+  const [bookmarks, setBookmarks] = useState([])
+  const [loadingBookmarks, setLoadingBookmarks] = useState(false)
+  const [searchBookmark, setSearchBookmark] = useState('')
+
+  const BADGES_DEFINITION = [
+    { id: 'first_lesson', title: 'Khởi Đầu Hành Trình', desc: 'Hoàn thành bài học đầu tiên', icon: '🚀', color: 'border-cyan-500/40 bg-cyan-500/10 text-cyan-400' },
+    { id: 'streak_3', title: 'Chiến Binh Chăm Chỉ', desc: 'Chuỗi học liên tục 3 ngày', icon: '🔥', color: 'border-amber-500/40 bg-amber-500/10 text-amber-400' },
+    { id: 'streak_7', title: 'Hào Quang Học Tập', desc: 'Chuỗi học liên tục 7 ngày', icon: '⚡', color: 'border-purple-500/40 bg-purple-500/10 text-purple-400' },
+    { id: 'quiz_master', title: 'Bậc Thầy Quiz', desc: 'Đạt điểm tuyệt đối bài kiểm tra', icon: '🎓', color: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400' },
+    { id: 'lab_hunter', title: 'Thợ Săn Lỗ Hổng', desc: 'Hoàn thành bài Lab thực hành CTF', icon: '🛡️', color: 'border-rose-500/40 bg-rose-500/10 text-rose-400' }
+  ]
 
   useEffect(() => {
     if (user) {
       setUsername(user.username || '')
       setAvatarUrl(user.avatar_url || '')
       fetchProgress()
+      fetchBookmarks()
     } else {
       setProgress(null)
+      setBookmarks([])
     }
   }, [user?.id, user?._id, isGuest])
+
+  const fetchBookmarks = async () => {
+    if (!user || isGuest) return
+    setLoadingBookmarks(true)
+    try {
+      const token = localStorage.getItem('access_token')
+      const headers = token ? { Authorization: `Bearer ${token}` } : {}
+      const res = await axios.get(`${API_BASE_URL}/chat/bookmarks`, { headers })
+      setBookmarks(res.data || [])
+    } catch (err) {
+      console.error('Error fetching bookmarks:', err)
+    } finally {
+      setLoadingBookmarks(false)
+    }
+  }
+
+  const handleDeleteBookmark = async (id) => {
+    try {
+      const token = localStorage.getItem('access_token')
+      const headers = token ? { Authorization: `Bearer ${token}` } : {}
+      await axios.delete(`${API_BASE_URL}/chat/bookmarks/${id}`, { headers })
+      setBookmarks(bookmarks.filter(b => b.id !== id && b._id !== id))
+    } catch (err) {
+      alert('Không thể xóa bookmark.')
+    }
+  }
 
   const fetchProgress = async () => {
     if (!user || isGuest) return
@@ -131,7 +173,7 @@ export default function ProfilePage({ lessons = [] }) {
   const coreCompletedCount = completedIds.filter(id => !id.startsWith('lab-')).length
   const totalLessons = lessons.length
   const progressPercent = totalLessons > 0 ? Math.min(100, (coreCompletedCount / totalLessons) * 100) : 0
-  const totalXP = completedIds.length * 500
+  const totalXP = user?.xp || 0
 
   // Auditor Rank
   const getAuditorRank = (percent) => {
@@ -171,6 +213,34 @@ export default function ProfilePage({ lessons = [] }) {
         </div>
       )}
 
+      {/* Tabs Switcher */}
+      <div className="flex space-x-3 border-b border-slate-800 pb-3">
+        <button
+          onClick={() => setActiveTab('overview')}
+          className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl font-display text-sm font-bold transition-all ${
+            activeTab === 'overview'
+              ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20'
+              : 'bg-slate-900/60 text-slate-400 hover:text-slate-200 hover:bg-slate-900 border border-slate-850'
+          }`}
+        >
+          <Award className="w-4 h-4" />
+          <span>📊 Hồ Sơ & Tiến Độ</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('bookmarks')}
+          className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl font-display text-sm font-bold transition-all ${
+            activeTab === 'bookmarks'
+              ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20'
+              : 'bg-slate-900/60 text-slate-400 hover:text-slate-200 hover:bg-slate-900 border border-slate-850'
+          }`}
+        >
+          <BookmarkIcon className="w-4 h-4" />
+          <span>📚 Sổ Tay Kiến Thức ({bookmarks.length})</span>
+        </button>
+      </div>
+
+      {activeTab === 'overview' ? (
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
         {/* Left Column: Account Details & Editing */}
@@ -311,21 +381,29 @@ export default function ProfilePage({ lessons = [] }) {
             ) : (
               <div className="space-y-6">
                 {/* Metrics Row */}
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="bg-slate-900/60 border border-slate-850 p-4 rounded-xl relative overflow-hidden">
+                <div className="grid grid-cols-4 gap-3">
+                  <div className="bg-slate-900/60 border border-slate-850 p-3.5 rounded-xl relative overflow-hidden">
                     <span className="text-[10px] font-mono text-slate-500 block uppercase">Hoàn thành</span>
-                    <span className="text-2xl font-bold font-display text-emerald-400 block mt-1">{coreCompletedCount} <span className="text-xs text-slate-500">/{totalLessons} ({completedIds.filter(id => id.startsWith('lab-')).length} lab)</span></span>
-                    <BookOpen className="w-12 h-12 text-emerald-500/5 absolute right-2 bottom-2" />
+                    <span className="text-xl font-bold font-display text-emerald-400 block mt-1">{coreCompletedCount} <span className="text-[10px] text-slate-500">/{totalLessons}</span></span>
+                    <BookOpen className="w-10 h-10 text-emerald-500/5 absolute right-1.5 bottom-1.5" />
                   </div>
-                  <div className="bg-slate-900/60 border border-slate-850 p-4 rounded-xl relative overflow-hidden">
-                    <span className="text-[10px] font-mono text-slate-500 block uppercase">Điểm Tích Lũy</span>
-                    <span className="text-2xl font-bold font-display text-amber-400 block mt-1">{totalXP} <span className="text-[10px] text-slate-500 font-mono">XP</span></span>
-                    <Zap className="w-12 h-12 text-amber-500/5 absolute right-2 bottom-2" />
+                  <div className="bg-slate-900/60 border border-slate-850 p-3.5 rounded-xl relative overflow-hidden">
+                    <span className="text-[10px] font-mono text-slate-500 block uppercase">XP Tích Lũy</span>
+                    <span className="text-xl font-bold font-display text-amber-400 block mt-1">{totalXP}</span>
+                    <Zap className="w-10 h-10 text-amber-500/5 absolute right-1.5 bottom-1.5" />
                   </div>
-                  <div className="bg-slate-900/60 border border-slate-850 p-4 rounded-xl relative overflow-hidden">
-                    <span className="text-[10px] font-mono text-slate-500 block uppercase">Tỷ lệ tiến trình</span>
-                    <span className="text-2xl font-bold font-display text-cyan-400 block mt-1">{Math.round(progressPercent)}%</span>
-                    <Award className="w-12 h-12 text-cyan-500/5 absolute right-2 bottom-2" />
+                  <div className="bg-slate-900/60 border border-slate-850 p-3.5 rounded-xl relative overflow-hidden">
+                    <span className="text-[10px] font-mono text-slate-500 block uppercase">Chuỗi Ngày</span>
+                    <span className="text-xl font-bold font-display text-rose-400 block mt-1 flex items-center gap-1">
+                      <Flame className="w-4 h-4 text-rose-500 fill-rose-500" />
+                      {user?.current_streak || 1} <span className="text-[10px] text-slate-500 font-mono">ngày</span>
+                    </span>
+                    <Flame className="w-10 h-10 text-rose-500/5 absolute right-1.5 bottom-1.5" />
+                  </div>
+                  <div className="bg-slate-900/60 border border-slate-850 p-3.5 rounded-xl relative overflow-hidden">
+                    <span className="text-[10px] font-mono text-slate-500 block uppercase">Tỷ Lệ</span>
+                    <span className="text-xl font-bold font-display text-cyan-400 block mt-1">{Math.round(progressPercent)}%</span>
+                    <Award className="w-10 h-10 text-cyan-500/5 absolute right-1.5 bottom-1.5" />
                   </div>
                 </div>
 
@@ -358,6 +436,41 @@ export default function ProfilePage({ lessons = [] }) {
                 </div>
               </div>
             )}
+          </div>
+
+          {/* Badges Showcase */}
+          <div className="glass-strong border border-slate-850 rounded-2xl p-6">
+            <h3 className="text-sm font-bold font-mono text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+              <Trophy className="w-4 h-4 text-purple-400" />
+              <span>🎖️ BỘ SƯU TẬP HUY HIỆU & DANH HIỆU ({user?.badges?.length || 1}/{BADGES_DEFINITION.length})</span>
+            </h3>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+              {BADGES_DEFINITION.map((b) => {
+                const isUnlocked = (user?.badges || ['first_lesson']).includes(b.id) || b.id === 'first_lesson'
+                return (
+                  <div
+                    key={b.id}
+                    className={`p-3.5 rounded-xl border flex items-start space-x-3 transition ${
+                      isUnlocked
+                        ? `${b.color} shadow-sm shadow-purple-500/10`
+                        : 'border-slate-850 bg-slate-900/30 opacity-40 grayscale'
+                    }`}
+                  >
+                    <div className="text-2xl p-2 rounded-lg bg-slate-950/60 border border-slate-800 flex-shrink-0 flex items-center justify-center">
+                      {b.icon}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold font-display truncate">{b.title}</span>
+                        {isUnlocked && <Check className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0 ml-1" />}
+                      </div>
+                      <p className="text-[11px] text-slate-400 font-sans leading-tight mt-1">{b.desc}</p>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
           </div>
 
           {/* Completed Content List */}
@@ -405,6 +518,97 @@ export default function ProfilePage({ lessons = [] }) {
         </div>
 
       </div>
+      ) : (
+        /* Bookmarks Tab */
+        <div className="glass-strong border border-slate-850 rounded-2xl p-6 md:p-8 space-y-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-800 pb-5">
+            <div>
+              <h3 className="text-lg font-bold font-display flex items-center gap-2 text-amber-400">
+                <BookmarkIcon className="w-5 h-5" />
+                <span>Sổ Tay Kiến Thức & Highlights Đã Lưu</span>
+              </h3>
+              <p className="text-xs text-slate-400 font-mono mt-1">
+                Lưu trữ các câu trả lời, đoạn code mẫu và giải thích quan trọng từ AI Tutor
+              </p>
+            </div>
+
+            <div className="relative w-full sm:w-72">
+              <Search className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
+              <input
+                type="text"
+                placeholder="Tìm kiếm trong Sổ tay..."
+                value={searchBookmark}
+                onChange={(e) => setSearchBookmark(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 bg-slate-900 border border-slate-800 rounded-xl text-xs text-slate-200 placeholder-slate-500 focus:border-amber-500/50 outline-none transition font-mono"
+              />
+            </div>
+          </div>
+
+          {loadingBookmarks ? (
+            <div className="flex justify-center py-12">
+              <Loader2 className="w-8 h-8 text-amber-500 animate-spin" />
+            </div>
+          ) : bookmarks.length === 0 ? (
+            <div className="text-center py-12 text-slate-500 text-sm italic bg-slate-900/20 border border-slate-850/50 rounded-xl space-y-2">
+              <Star className="w-8 h-8 text-slate-600 mx-auto" />
+              <p>Bạn chưa lưu bookmark hay highlight nào.</p>
+              <p className="text-xs text-slate-600">Khi trò chuyện cùng AI Tutor, nhấn nút ⭐ trên tin nhắn hoặc bôi đen văn bản để lưu vào đây nhé!</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {bookmarks
+                .filter(b => (b.title || '' + b.content || '' + b.highlighted_text || '').toLowerCase().includes(searchBookmark.toLowerCase()))
+                .map((b) => (
+                  <div
+                    key={b.id || b._id}
+                    onClick={() => {
+                      if (onNavigateToChat && b.session_id) {
+                        onNavigateToChat(b.session_id)
+                      }
+                    }}
+                    className={`p-5 bg-slate-900/60 border border-slate-850 rounded-2xl space-y-3 relative hover:border-slate-750 transition group ${b.session_id ? 'cursor-pointer hover:bg-slate-900' : ''}`}
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex items-center space-x-2.5 min-w-0">
+                        <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/25 flex items-center justify-center flex-shrink-0 text-amber-400">
+                          <BookmarkIcon className="w-4 h-4" />
+                        </div>
+                        <h4 className="text-sm font-bold font-display text-slate-100 truncate">{b.title}</h4>
+                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleDeleteBookmark(b.id || b._id)
+                        }}
+                        className="p-1.5 text-slate-500 hover:text-rose-400 rounded-lg hover:bg-rose-500/10 transition"
+                        title="Xóa bookmark này"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    {b.highlighted_text && (
+                      <div className="p-3 bg-amber-500/10 border-l-2 border-amber-500 rounded-r-xl text-xs text-amber-300 font-mono italic">
+                        "{b.highlighted_text}"
+                      </div>
+                    )}
+
+                    <p className="text-xs text-slate-300 font-sans leading-relaxed line-clamp-4 whitespace-pre-wrap">
+                      {b.content}
+                    </p>
+
+                    <div className="flex items-center justify-between pt-2 border-t border-slate-850/60 text-[10px] font-mono text-slate-500">
+                      <span>Lưu ngày: {new Date(b.created_at).toLocaleDateString('vi-VN')}</span>
+                      {b.sources && b.sources.length > 0 && (
+                        <span className="text-cyan-400">Nguồn RAG: {b.sources.length} tài liệu</span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }

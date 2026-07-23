@@ -39,7 +39,32 @@
           ],
           "correct": 1
         }
-      ]
+      ],
+      "resources": [],
+      "quiz": [
+        {
+          "question": "Hàm băm SHA-256 tạo ra output có độ dài bao nhiêu bit?",
+          "options": [
+            "128 bit",
+            "256 bit",
+            "512 bit",
+            "1024 bit"
+          ],
+          "correct": 1
+        },
+        {
+          "question": "Merkle Tree được sử dụng trong blockchain để làm gì?",
+          "options": [
+            "Mã hóa dữ liệu",
+            "Xác minh tính toàn vẹn giao dịch",
+            "Tạo khóa riêng",
+            "Mining"
+          ],
+          "correct": 1
+        }
+      ],
+      "quizEnabled": true,
+      "content": "test this"
     },
     {
       "id": "lesson-02",
@@ -440,6 +465,23 @@
           "correct": 0
         }
       ]
+    },
+    {
+      "id": "lesson-17",
+      "title": "test",
+      "description": "test 123456",
+      "content": " Test this map 123456",
+      "category": "smart-contracts",
+      "difficulty": "intermediate",
+      "duration_minutes": 45,
+      "labEnabled": true,
+      "labTitle": "Test",
+      "labDescription": "test",
+      "labStarterCode": "//test",
+      "resources": [],
+      "quiz_questions": [],
+      "quiz": [],
+      "quizEnabled": false
     }
   ]
 }

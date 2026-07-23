@@ -13,6 +13,7 @@ from backend.models.schemas import (
 )
 from backend.models.database import get_database
 from backend.middleware.auth_middleware import get_current_user, get_optional_user
+from backend.services.gamification_service import GamificationService
 
 router = APIRouter(prefix="/api/roadmap", tags=["roadmap"])
 
@@ -55,20 +56,7 @@ async def get_beginner_roadmap(
         existing = await db["learning_roadmaps"].find_one({"target_audience": {"$regex": "^beginner$", "$options": "i"}})
         
         if existing:
-            # Check if JSON file has more or updated lessons than DB record
-            file_path = Path(__file__).parent.parent / "data" / "roadmap_quizzes.json"
-            if file_path.exists():
-                with open(file_path, "r", encoding="utf-8") as f:
-                    file_roadmap = json.load(f)
-                    file_lessons = file_roadmap.get("lessons", [])
-                    if len(file_lessons) != len(existing.get("lessons", [])) or (file_lessons and existing.get("lessons") and file_lessons[0].get("id") != existing["lessons"][0].get("id")):
-                        await db["learning_roadmaps"].update_one(
-                            {"_id": existing["_id"]},
-                            {"$set": {"lessons": file_lessons, "updated_at": datetime.utcnow()}}
-                        )
-                        existing["lessons"] = file_lessons
-
-            # Format and return directly, preventing overwriting from JSON file on every request
+            # Format and return directly from DB (which includes any admin additions/updates)
             existing["id"] = str(existing.pop("_id"))
             existing["created_at"] = format_datetime(existing.get("created_at"))
             existing["updated_at"] = format_datetime(existing.get("updated_at"))
@@ -310,11 +298,21 @@ async def complete_lesson(
             }
         )
         
+        # Trigger gamification update (Streak, XP, Badges)
+        gamification_res = await GamificationService.update_user_gamification(
+            db=db,
+            user_id=auth_user_id,
+            xp_gain=500,
+            completed_lessons_count=len(core_completed),
+            is_lab_pass=False
+        )
+
         return {
             "progress_id": str(progress["_id"]),
             "completed_lessons": completed,
             "progress_percentage": round(percentage, 2),
-            "message": "Lesson marked as completed"
+            "message": "Lesson marked as completed",
+            "gamification": gamification_res
         }
     except Exception as e:
         if isinstance(e, HTTPException):
@@ -329,11 +327,24 @@ async def get_lesson_content(
     user: Optional[dict] = Depends(get_optional_user)
 ) -> dict:
     """Get rich markdown content and code blocks for a specific lesson"""
-    edu_dir = Path(__file__).parent.parent.parent / "data" / "education"
-    
-    # Normalize ID to use hyphens
     normalized_id = lesson_id.replace("_", "-")
     
+    # Check DB first to see if admin customized content for this lesson
+    try:
+        roadmap = await db["learning_roadmaps"].find_one({"target_audience": {"$regex": "^beginner$", "$options": "i"}})
+        if roadmap and roadmap.get("lessons"):
+            for l in roadmap["lessons"]:
+                if l.get("id", "").replace("_", "-") == normalized_id:
+                    if l.get("content") and str(l.get("content")).strip():
+                        return {
+                            "lesson_id": lesson_id,
+                            "markdown_content": l["content"]
+                        }
+                    break
+    except Exception as err:
+        print(f"[Roadmap] Error checking DB for lesson content: {err}")
+
+    edu_dir = Path(__file__).parent.parent.parent / "data" / "education"
     mapping = {
         "lesson-01": "01-blockchain-basics.md",
         "lesson-02": "05-smart-contracts.md",
@@ -380,3 +391,12 @@ async def get_lesson_content(
         "file_name": file_name,
         "markdown_content": content
     }
+
+
+@router.get("/leaderboard")
+async def get_roadmap_leaderboard(
+    limit: int = 50,
+    db = Depends(get_database)
+) -> List[dict]:
+    """Get student leaderboard ranked by XP and completed lessons"""
+    return await GamificationService.get_leaderboard(db, limit=limit)

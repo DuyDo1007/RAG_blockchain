@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import axios from 'axios'
 import { AuthProvider, useAuth, API_BASE_URL } from './contexts/AuthContext'
 import Sidebar from './components/Sidebar'
 import ChatHistory from './components/ChatHistory'
@@ -14,12 +15,11 @@ import LabWorkspace from './components/LabWorkspace'
 import QuizModal from './components/QuizModal'
 import ProfilePage from './pages/ProfilePage'
 import RoleBadge from './components/RoleBadge'
-import { lessonsData } from './data/lessonsData'
 import './index.css'
-import axios from 'axios'
-import { Shield, MessageSquare, Sparkles, Loader2, Lock } from 'lucide-react'
+import { Shield, MessageSquare, Sparkles, Loader2, Lock, Trophy, Flame, Zap } from 'lucide-react'
+import LeaderboardModal from './components/LeaderboardModal'
 
-function PlatformHeader({ user }) {
+function PlatformHeader({ user, onOpenLeaderboard }) {
   return (
     <div className="h-14 border-b border-slate-900 bg-gradient-to-r from-slate-950 via-[#0b0e14] to-slate-950 px-6 flex items-center justify-between text-xs select-none z-30 relative backdrop-blur-md">
       <div className="flex items-center gap-3">
@@ -31,7 +31,30 @@ function PlatformHeader({ user }) {
         </span>
       </div>
       
-      <div className="flex items-center gap-4 font-mono text-[10px] text-slate-400">
+      <div className="flex items-center gap-3 sm:gap-4 font-mono text-[10px] text-slate-300">
+        {user && user.role !== 'guest' && (
+          <>
+            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 bg-slate-900/80 border border-slate-800 rounded-lg text-rose-400 font-bold shadow-sm" title="Chuỗi ngày học liên tục">
+              <Flame className="w-3.5 h-3.5 fill-rose-500 text-rose-500 animate-bounce" />
+              <span>{user.current_streak || 1} <span className="text-[9px] text-slate-500">ngày</span></span>
+            </div>
+
+            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 bg-slate-900/80 border border-slate-800 rounded-lg text-amber-400 font-bold shadow-sm" title="Tổng XP tích lũy">
+              <Zap className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+              <span>{user.xp || 0} <span className="text-[9px] text-slate-500">XP</span></span>
+            </div>
+          </>
+        )}
+
+        <button
+          onClick={onOpenLeaderboard}
+          className="flex items-center gap-1.5 px-3 py-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 hover:border-amber-500/50 rounded-lg font-display text-xs font-bold transition shadow-sm cursor-pointer"
+          title="Bảng Xếp Hạng Hào Quang"
+        >
+          <Trophy className="w-3.5 h-3.5" />
+          <span className="hidden xs:inline sm:inline">🏆 Bảng Xếp Hạng</span>
+        </button>
+
         {/* Role Badge */}
         {user && (
           <RoleBadge role={user.role} />
@@ -42,7 +65,7 @@ function PlatformHeader({ user }) {
 }
 
 function MainContent() {
-  const { user, isAuthenticated, isGuest, isAdmin, loading, logout, role } = useAuth()
+  const { user, isAuthenticated, isGuest, isAdmin, loading, logout, role, refreshUser } = useAuth()
   const [authMode, setAuthMode] = useState('login') // 'login' | 'register'
   const [activeTab, setActiveTab] = useState('lessons') // 'roadmap' | 'lessons' | 'lab' | 'chat' | 'admin'
   const [currentSessionId, setCurrentSessionId] = useState(null)
@@ -52,7 +75,8 @@ function MainContent() {
   const [activeLessonModal, setActiveLessonModal] = useState(null)
   const [activeLab, setActiveLab] = useState(null)
   const [activeQuizModal, setActiveQuizModal] = useState(null)
-  const [lessons, setLessons] = useState(lessonsData)
+  const [showLeaderboard, setShowLeaderboard] = useState(false)
+  const [lessons, setLessons] = useState([])
 
   // Fetch lessons from database / api
   useEffect(() => {
@@ -73,6 +97,9 @@ function MainContent() {
       }
     }
     fetchLessons()
+    if (refreshUser && isAuthenticated && !isGuest) {
+      refreshUser()
+    }
   }, [refreshProgress])
 
   // Safety check and reset when user changes
@@ -121,8 +148,12 @@ function MainContent() {
   const handleNewSession = async () => {
     if (!user || isGuest) return
     try {
+      const token = localStorage.getItem('access_token')
+      const headers = token ? { Authorization: `Bearer ${token}` } : {}
       const response = await axios.post(
-        `${API_BASE_URL}/chat/sessions?title=Cuộc trò chuyện mới`
+        `${API_BASE_URL}/chat/sessions?title=Cuộc trò chuyện mới`,
+        {},
+        { headers }
       )
       setCurrentSessionId(response.data.session_id || response.data.id)
       triggerRefreshHistory()
@@ -157,7 +188,7 @@ function MainContent() {
       <div className="bg-mesh" />
 
       {/* Platform Header with Role Badge */}
-      <PlatformHeader user={user} />
+      <PlatformHeader user={user} onOpenLeaderboard={() => setShowLeaderboard(true)} />
 
       <div className="relative z-10 flex flex-1 w-full h-full overflow-hidden">
         {/* Sidebar */}
@@ -234,6 +265,7 @@ function MainContent() {
               <LessonsPage 
                 refreshTrigger={refreshProgress}
                 lessons={lessons}
+                onOpenLeaderboard={() => setShowLeaderboard(true)}
                 onSelectLesson={(lesson) => setActiveLessonModal(lesson)}
                 onStartLab={(lesson) => {
                   if (!isGuest) {
@@ -262,7 +294,15 @@ function MainContent() {
           {/* Profile Tab */}
           {activeTab === 'profile' && (
             <div className="flex-1 overflow-auto bg-cyber-surface">
-              <ProfilePage lessons={lessons} />
+              <ProfilePage 
+                lessons={lessons} 
+                onNavigateToChat={(sessionId) => {
+                  if (sessionId) {
+                    setCurrentSessionId(sessionId);
+                  }
+                  setActiveTab('chat');
+                }}
+              />
             </div>
           )}
 
@@ -337,6 +377,14 @@ function MainContent() {
             }
             setRefreshProgress(prev => prev + 1);
           }}
+        />
+      )}
+
+      {/* Leaderboard Modal */}
+      {showLeaderboard && (
+        <LeaderboardModal
+          onClose={() => setShowLeaderboard(false)}
+          currentUser={user}
         />
       )}
     </div>

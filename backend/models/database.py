@@ -72,6 +72,10 @@ class MongoDBManager:
             # Contract audit cache index
             await cls.db["contract_cache"].create_index("address", unique=True)
             
+            # User bookmarks index
+            await cls.db["user_bookmarks"].create_index("user_id")
+            await cls.db["user_bookmarks"].create_index("created_at")
+
             print("[Database] Database indexes created successfully")
         except Exception as e:
             print(f"[Database] Index creation skipped or failed: {e}")

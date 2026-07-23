@@ -13,6 +13,7 @@ from backend.middleware.auth_middleware import get_current_user
 from src.agent_rag import get_gemini_client
 from google.genai import types
 from backend.services.test_runner import run_lab_tests, run_python_lab_tests, run_solidity_lab_tests
+from backend.services.gamification_service import GamificationService
 
 router = APIRouter(prefix="/api/lab", tags=["lab"])
 
@@ -79,6 +80,16 @@ async def grade_lab_submission(
         clean_code,
         clean_starter
     )
+    if test_result.get("passed"):
+        auth_user_id = str(current_user["_id"])
+        gamification_res = await GamificationService.update_user_gamification(
+            db=db,
+            user_id=auth_user_id,
+            xp_gain=1000,
+            completed_lessons_count=0,
+            is_lab_pass=True
+        )
+        test_result["gamification"] = gamification_res
     return test_result
 
 
@@ -120,18 +131,29 @@ HÃY TRẢ VỀ ĐÚNG 1 ĐỐI TƯỢNG JSON VỚI CẤU TRÚC SAU (KHÔNG THÊ
   "suggested_snippet": "Một đoạn code ngắn (5-10 dòng) minh họa cách viết cú pháp/hàm chuẩn mà không giải hết toàn bộ bài lab"
 }}"""
 
-        response = await asyncio.to_thread(
-            client.models.generate_content,
-            model="gemini-2.5-flash",
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                temperature=0.2,
-                max_output_tokens=1024,
-                response_mime_type="application/json"
-            )
-        )
+        models_to_try = ["gemini-3.1-flash-lite-preview", "gemini-2.5-flash", "gemini-flash-latest"]
+        response = None
+        for target_model in models_to_try:
+            try:
+                response = await asyncio.to_thread(
+                    client.models.generate_content,
+                    model=target_model,
+                    contents=prompt,
+                    config=types.GenerateContentConfig(
+                        temperature=0.2,
+                        max_output_tokens=1024,
+                        response_mime_type="application/json"
+                    )
+                )
+                if response and response.text:
+                    break
+            except Exception as api_err:
+                err_str = str(api_err)
+                if any(k in err_str for k in ["503", "429", "UNAVAILABLE", "RESOURCE_EXHAUSTED", "NOT_FOUND"]):
+                    continue
+                raise api_err
 
-        raw_text = (response.text or "").strip()
+        raw_text = (response.text if response else "").strip()
         if raw_text.startswith("```json"):
             raw_text = raw_text[7:]
         if raw_text.endswith("```"):

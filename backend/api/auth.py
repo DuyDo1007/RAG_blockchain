@@ -190,18 +190,46 @@ async def refresh_token(request: RefreshTokenRequest, db = Depends(get_database)
     return TokenResponse(access_token=new_access_token, refresh_token=new_refresh_token)
 
 
-@router.get("/me", response_model=UserResponse)
-async def get_current_user_profile(current_user: dict = Depends(get_current_user)):
-    """Get current logged-in user profile"""
+async def build_user_response(user_dict: dict, db) -> UserResponse:
+    u_id = str(user_dict["_id"])
+    progress = await db["user_progress"].find_one({"user_id": u_id})
+    completed_ids = progress.get("completed_lessons", []) if progress else []
+    core_completed = [lid for lid in completed_ids if not str(lid).startswith("lab-")]
+    labs_completed = [lid for lid in completed_ids if str(lid).startswith("lab-")]
+
+    calculated_xp = len(core_completed) * 500 + len(labs_completed) * 1000
+    raw_xp = user_dict.get("xp") or 0
+    effective_xp = max(raw_xp, calculated_xp)
+
+    if raw_xp < effective_xp:
+        await db["users"].update_one(
+            {"_id": user_dict["_id"]},
+            {"$set": {"xp": effective_xp}}
+        )
+
     return UserResponse(
-        id=str(current_user["_id"]),
-        email=current_user["email"],
-        username=current_user["username"],
-        auth_provider=current_user.get("auth_provider", "local"),
-        role=current_user.get("role", "user"),
-        avatar_url=current_user.get("avatar_url"),
-        created_at=current_user.get("created_at", datetime.utcnow())
+        id=u_id,
+        email=user_dict["email"],
+        username=user_dict["username"],
+        auth_provider=user_dict.get("auth_provider", "local"),
+        role=user_dict.get("role", "user"),
+        avatar_url=user_dict.get("avatar_url"),
+        xp=effective_xp,
+        current_streak=user_dict.get("current_streak", 1 if len(completed_ids) > 0 else 0),
+        max_streak=user_dict.get("max_streak", 1 if len(completed_ids) > 0 else 0),
+        last_active_date=user_dict.get("last_active_date"),
+        badges=user_dict.get("badges", []),
+        created_at=user_dict.get("created_at", datetime.utcnow())
     )
+
+
+@router.get("/me", response_model=UserResponse)
+async def get_current_user_profile(
+    current_user: dict = Depends(get_current_user),
+    db = Depends(get_database)
+):
+    """Get current logged-in user profile with accurate XP and streak stats"""
+    return await build_user_response(current_user, db)
 
 
 class ProfileUpdate(BaseModel):
@@ -221,7 +249,6 @@ async def update_profile(
         username_clean = update_data.username.strip()
         if not username_clean:
             raise HTTPException(status_code=400, detail="Tên người dùng không được để trống")
-        # Check if username is already taken by another user
         existing = await db["users"].find_one({"username": username_clean, "_id": {"$ne": current_user["_id"]}})
         if existing:
             raise HTTPException(status_code=400, detail="Tên người dùng đã tồn tại")
@@ -235,20 +262,11 @@ async def update_profile(
             {"_id": current_user["_id"]},
             {"$set": update_dict}
         )
-        # Fetch updated user
         updated_user = await db["users"].find_one({"_id": current_user["_id"]})
     else:
         updated_user = current_user
 
-    return UserResponse(
-        id=str(updated_user["_id"]),
-        email=updated_user["email"],
-        username=updated_user["username"],
-        auth_provider=updated_user.get("auth_provider", "local"),
-        role=updated_user.get("role", "user"),
-        avatar_url=updated_user.get("avatar_url"),
-        created_at=updated_user.get("created_at", datetime.utcnow())
-    )
+    return await build_user_response(updated_user, db)
 
 
 @router.delete("/me")

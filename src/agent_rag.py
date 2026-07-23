@@ -39,9 +39,15 @@ async def route_query_node(state: AgentState) -> AgentState:
     state.setdefault("status_history", []).append("🔍 Đang phân tích ý định câu hỏi (Router Node)...")
     print(f"[AgentRAG:Router] Routing query: {query[:60]}...")
     
-    # Quick heuristics for greetings
-    lower_q = query.strip().lower()
-    if lower_q in ["xin chào", "chào bạn", "hello", "hi", "chào", "bạn là ai", "cảm ơn", "thank you"]:
+    # Quick heuristics for greetings and identity checks
+    import re
+    clean_q = re.sub(r'[^\w\s]', '', query.strip().lower()).strip()
+    direct_phrases = [
+        "xin chào", "chào bạn", "hello", "hi", "chào", "bạn là ai", "mày là ai", 
+        "m là ai", "cảm ơn", "thank you", "mày tên gì", "bạn tên gì", "ai tutor là gì", 
+        "bạn làm được gì", "mày làm được gì", "who are you"
+    ]
+    if clean_q in direct_phrases or any(phrase in clean_q for phrase in ["bạn là ai", "mày là ai", "m là ai", "bạn tên gì", "mày tên gì"]):
         state["intent"] = "direct"
         return state
 
@@ -53,7 +59,7 @@ async def route_query_node(state: AgentState) -> AgentState:
             f"- `platform_guide`: Câu hỏi hỏi về tính năng, cách sử dụng trang web, cách làm bài lab hiệu quả trên hệ thống, cách chấm điểm, kinh nghiệm học tập, gợi ý AI lấy từ đâu, cách nhận XP/danh hiệu hoặc lộ trình trên website.\n"
             f"- `retrieve`: Câu hỏi hỏi sâu về kiến thức chuyên môn, lý thuyết, thuật ngữ kỹ thuật, lỗ hổng bảo mật, giải thích code Solidity/Web3/DeFi/Crypto/EVM.\n"
             f"- `reject`: Câu hỏi HOÀN TOÀN KHÔNG LIÊN QUAN đến Blockchain/Web3/lập trình/giáo dục (ví dụ: công thức nấu ăn, tin tức giải trí, thể thao, thời tiết).\n"
-            f"- `direct`: Câu hỏi chào hỏi đơn giản hoặc hỏi thăm ngắn gọn về AI Tutor.\n\n"
+            f"- `direct`: Câu hỏi chào hỏi đơn giản (xin chào, hi, hello) hoặc hỏi danh tính, hỏi thăm về AI Tutor (ví dụ: 'bạn là ai', 'mày là ai', 'bạn tên gì', 'mày làm được gì').\n\n"
             f"Câu hỏi: \"{query}\"\n\n"
             f"Chỉ trả về đúng 1 từ khóa (platform_guide, retrieve, reject, hoặc direct):"
         )
@@ -61,10 +67,18 @@ async def route_query_node(state: AgentState) -> AgentState:
             client.models.generate_content,
             model="gemini-3.5-flash",
             contents=prompt,
-            config=types.GenerateContentConfig(temperature=0.0, max_output_tokens=10)
+            config=types.GenerateContentConfig(temperature=0.0, max_output_tokens=200)
         )
         intent = (response.text or "retrieve").strip().lower()
-        if intent not in ["platform_guide", "retrieve", "reject", "direct"]:
+        if "platform_guide" in intent:
+            intent = "platform_guide"
+        elif "reject" in intent:
+            intent = "reject"
+        elif "direct" in intent:
+            intent = "direct"
+        elif "retrieve" in intent:
+            intent = "retrieve"
+        else:
             intent = "retrieve"
         state["intent"] = intent
         print(f"[AgentRAG:Router] Classified intent: {intent}")
@@ -97,25 +111,29 @@ async def direct_query_node(state: AgentState) -> AgentState:
     state.setdefault("status_history", []).append("💬 Đang trả lời chào hỏi trực tiếp...")
     print("[AgentRAG:Direct] Handling direct query.")
     
+    fallback_msg = (
+        "Xin chào bạn! 👋 Mình là **AI Tutor & Security Mentor** tại Blockchain Academy.\n\n"
+        "Mình chuyên đồng hành và giải đáp mọi thắc mắc của bạn về kiến thức Blockchain, mật mã học, Web3, cũng như cách viết Smart Contract bằng Solidity và phát hiện các lỗ hổng bảo mật.\n\n"
+        "Bạn muốn bắt đầu tìm hiểu chủ đề nào trong lộ trình học hôm nay? Hãy cứ đặt câu hỏi nhé!"
+    )
+
     try:
         client = get_gemini_client()
         prompt = (
             f"Bạn là AI Tutor thân thiện chuyên giảng dạy về Blockchain trên nền tảng Blockchain Academy.\n"
             f"Người dùng vừa chào hoặc hỏi meta: \"{state['query']}\"\n\n"
-            f"Hãy trả lời nhiệt tình, ngắn gọn (dưới 150 từ), giới thiệu ngắn vai trò của bạn và mời họ đặt câu hỏi về lộ trình học Blockchain."
+            f"Hãy trả lời nhiệt tình, thân thiện bằng tiếng Việt, giới thiệu vai trò của bạn là AI Tutor & Security Mentor và mời họ đặt câu hỏi về lộ trình học hoặc kiến thức Blockchain/Smart Contract."
         )
         response = await asyncio.to_thread(
             client.models.generate_content,
             model="gemini-3.5-flash",
             contents=prompt,
-            config=types.GenerateContentConfig(temperature=0.3, max_output_tokens=300)
+            config=types.GenerateContentConfig(temperature=0.3, max_output_tokens=8192)
         )
-        state["final_answer"] = response.text
+        state["final_answer"] = response.text or fallback_msg
     except Exception as e:
-        state["final_answer"] = (
-            "Chào bạn! Mình là AI Tutor chuyên gia về Blockchain & Web3. "
-            "Mình sẵn sàng giải đáp mọi thắc mắc từ cơ bản đến nâng cao trong lộ trình học của bạn. Bạn muốn tìm hiểu về phần nào hôm nay?"
-        )
+        print(f"[AgentRAG:Direct] Error during direct response: {e}")
+        state["final_answer"] = fallback_msg
     return state
 
 
@@ -159,7 +177,7 @@ async def generate_answer_node(state: AgentState) -> AgentState:
             client.models.generate_content,
             model="gemini-3.5-flash",
             contents=prompt,
-            config=types.GenerateContentConfig(temperature=0.2, max_output_tokens=4096)
+            config=types.GenerateContentConfig(temperature=0.2, max_output_tokens=8192)
         )
         state["draft_answer"] = response.text or ""
     except Exception as e:
@@ -196,7 +214,7 @@ async def grade_hallucination_node(state: AgentState) -> AgentState:
             client.models.generate_content,
             model="gemini-3.5-flash",
             contents=prompt,
-            config=types.GenerateContentConfig(temperature=0.0, max_output_tokens=10)
+            config=types.GenerateContentConfig(temperature=0.0, max_output_tokens=200)
         )
         grade_res = (response.text or "pass").strip().lower()
         if "hallucinated" in grade_res:
@@ -215,7 +233,7 @@ async def grade_hallucination_node(state: AgentState) -> AgentState:
                 client.models.generate_content,
                 model="gemini-3.5-flash",
                 contents=correction_prompt,
-                config=types.GenerateContentConfig(temperature=0.1, max_output_tokens=3000)
+                config=types.GenerateContentConfig(temperature=0.1, max_output_tokens=8192)
             )
             state["final_answer"] = corrected_resp.text
         else:
@@ -335,12 +353,18 @@ async def stream_agentic_workflow(query: str, chat_history: Optional[List[Dict[s
     if intent == "reject":
         yield {"type": "status", "node": "reject", "message": "⚠️ Phát hiện câu hỏi ngoài luồng, đang chuyển hướng..."}
         state = await reject_query_node(state)
-        yield {"type": "chunk", "content": state["final_answer"]}
+        final_text = state.get("final_answer", "")
+        for i in range(0, len(final_text), 30):
+            yield {"type": "chunk", "content": final_text[i:i+30]}
+            await asyncio.sleep(0.01)
         return
     elif intent == "direct":
         yield {"type": "status", "node": "direct", "message": "💬 Đang trả lời trực tiếp..."}
         state = await direct_query_node(state)
-        yield {"type": "chunk", "content": state["final_answer"]}
+        final_text = state.get("final_answer", "")
+        for i in range(0, len(final_text), 30):
+            yield {"type": "chunk", "content": final_text[i:i+30]}
+            await asyncio.sleep(0.01)
         return
     elif intent == "platform_guide":
         yield {"type": "status", "node": "platform_guide", "message": "ℹ️ Tra cứu thông tin tính năng và hướng dẫn học tập trên hệ thống..."}

@@ -86,53 +86,46 @@ async def stream_chat_response(
 
                 # 2. Compose prompt and stream from Gemini
                 prompt = compose_prompt(request.message, docs, chat_history)
+                client = get_gemini_client()
+                models_to_try = ["gemini-3.1-flash-lite-preview", "gemini-2.5-flash", "gemini-flash-latest"]
+                full_text = []
+                stream_success = False
 
-                try:
-                    client = get_gemini_client()
-
-                    response_stream = await asyncio.to_thread(
-                        client.models.generate_content_stream,
-                        model="gemini-3.5-flash",
-                        contents=prompt,
-                        config=types.GenerateContentConfig(temperature=0.2, max_output_tokens=8192)
-                    )
-
-                    full_text = []
-                    for chunk in response_stream:
-                        if chunk.text:
-                            full_text.append(chunk.text)
-                            chunk_data = {
-                                "type": "chunk",
-                                "content": chunk.text
-                            }
-                            yield f"data: {json.dumps(chunk_data, ensure_ascii=False)}\n\n"
-                            await asyncio.sleep(0.01)  # allow event loop processing
-
-                    completed_answer = "".join(full_text)
-
-                except Exception as api_err:
-                    err_str = str(api_err)
-                    is_quota_or_key = (
-                        "429" in err_str or 
-                        "quota" in err_str.lower() or 
-                        "limit" in err_str.lower() or 
-                        "api key" in err_str.lower() or
-                        "invalid" in err_str.lower() or
-                        "credentials" in err_str.lower() or
-                        "not found" in err_str.lower()
-                    )
-                    
-                    if is_quota_or_key:
-                        fallback_text = generate_fallback_answer(request.message, docs)
-                        completed_answer = fallback_text
-                        
-                        words = fallback_text.split(" ")
-                        for i in range(0, len(words), 3):
-                            chunk_text = " ".join(words[i:i+3]) + " "
-                            yield f"data: {json.dumps({'type': 'chunk', 'content': chunk_text}, ensure_ascii=False)}\n\n"
-                            await asyncio.sleep(0.02)
-                    else:
+                for target_model in models_to_try:
+                    try:
+                        response_stream = await asyncio.to_thread(
+                            client.models.generate_content_stream,
+                            model=target_model,
+                            contents=prompt,
+                            config=types.GenerateContentConfig(temperature=0.2, max_output_tokens=8192)
+                        )
+                        for chunk in response_stream:
+                            if chunk.text:
+                                full_text.append(chunk.text)
+                                chunk_data = {
+                                    "type": "chunk",
+                                    "content": chunk.text
+                                }
+                                yield f"data: {json.dumps(chunk_data, ensure_ascii=False)}\n\n"
+                                await asyncio.sleep(0.01)
+                        stream_success = True
+                        break
+                    except Exception as api_err:
+                        err_str = str(api_err)
+                        if any(k in err_str for k in ["503", "429", "UNAVAILABLE", "RESOURCE_EXHAUSTED", "NOT_FOUND"]):
+                            continue
                         raise api_err
+
+                if not stream_success:
+                    fallback_text = generate_fallback_answer(request.message, docs)
+                    completed_answer = fallback_text
+                    words = fallback_text.split(" ")
+                    for i in range(0, len(words), 3):
+                        chunk_text = " ".join(words[i:i+3]) + " "
+                        yield f"data: {json.dumps({'type': 'chunk', 'content': chunk_text}, ensure_ascii=False)}\n\n"
+                        await asyncio.sleep(0.02)
+                else:
+                    completed_answer = "".join(full_text)
 
             # 3. Save assistant message to DB
             assistant_message = Message(

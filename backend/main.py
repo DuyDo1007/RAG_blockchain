@@ -17,6 +17,7 @@ from backend.api.auth import router as auth_router
 from backend.api.streaming import router as streaming_router
 from backend.api.admin import router as admin_router
 from backend.api.lab import router as lab_router
+from backend.services.gamification_service import GamificationService
 
 load_dotenv()
 
@@ -101,6 +102,14 @@ async def health_check(request: Request):
         "version": "2.0.0",
         "mongodb": mongo_status
     }
+
+
+@app.get("/api/leaderboard")
+@limiter.limit("60/minute")
+async def get_top_leaderboard(request: Request, limit: int = 50):
+    """Top-level endpoint to get student leaderboard ranked by XP and achievements"""
+    db = MongoDBManager.get_db()
+    return await GamificationService.get_leaderboard(db, limit=limit)
 
 
 if __name__ == "__main__":

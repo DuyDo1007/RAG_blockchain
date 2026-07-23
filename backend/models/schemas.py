@@ -61,7 +61,7 @@ class ChatSession(BaseModel):
     messages: List[Message] = []
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
-    model: str = "gemini-pro"  # LLM model used
+    model: str = "gemini-3.1-flash-lite-preview"  # LLM model used
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -128,7 +128,7 @@ class CreateChatRequest(BaseModel):
     user_id: Optional[str] = None
     session_id: Optional[str] = None
     message: str
-    model: str = "gemini-3.5-flash"
+    model: str = "gemini-3.1-flash-lite-preview"
 
     model_config = ConfigDict(
         arbitrary_types_allowed=True
@@ -192,11 +192,45 @@ class UserResponse(BaseModel):
     auth_provider: str
     role: str = "user"
     avatar_url: Optional[str] = None
+    xp: int = 0
+    current_streak: int = 0
+    max_streak: int = 0
+    last_active_date: Optional[str] = None
+    badges: List[Dict[str, Any]] = []
     created_at: datetime
 
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
         json_encoders={datetime: lambda v: v.isoformat()}
+    )
+
+
+class CreateBookmarkRequest(BaseModel):
+    """Request schema to save a bookmark or highlight"""
+    message_id: Optional[str] = None
+    session_id: Optional[str] = None
+    title: str
+    content: str
+    highlighted_text: Optional[str] = None
+    sources: Optional[List[str]] = []
+
+
+class UserBookmark(BaseModel):
+    """Saved bookmark or highlighted AI answer"""
+    id: Optional[PyObjectId] = Field(default=None, alias="_id")
+    user_id: str
+    message_id: Optional[str] = None
+    session_id: Optional[str] = None
+    title: str
+    content: str
+    highlighted_text: Optional[str] = None
+    sources: Optional[List[str]] = []
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+    model_config = ConfigDict(
+        populate_by_name=True,
+        arbitrary_types_allowed=True,
+        json_encoders={datetime: lambda v: v.isoformat(), ObjectId: str}
     )
 
 

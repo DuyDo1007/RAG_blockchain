@@ -22,7 +22,7 @@ const difficultyConfig = {
   advanced: { label: 'Nâng cao', color: 'text-rose-400', stars: 3 }
 }
 
-export default function LessonsPage({ onSelectLesson, onStartLab, refreshTrigger, lessons = [] }) {
+export default function LessonsPage({ onSelectLesson, onStartLab, refreshTrigger, lessons = [], onOpenLeaderboard }) {
   const { isGuest, user, logout, getGuestProgress } = useAuth()
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('all')
@@ -50,8 +50,8 @@ export default function LessonsPage({ onSelectLesson, onStartLab, refreshTrigger
   const filteredLessons = useMemo(() => {
     return lessons.filter(lesson => {
       const matchSearch = !searchQuery || 
-        lesson.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        lesson.description.toLowerCase().includes(searchQuery.toLowerCase())
+        (lesson.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (lesson.description || '').toLowerCase().includes(searchQuery.toLowerCase())
       const matchCategory = selectedCategory === 'all' || lesson.category === selectedCategory
       const matchDifficulty = selectedDifficulty === 'all' || lesson.difficulty === selectedDifficulty
       return matchSearch && matchCategory && matchDifficulty
@@ -104,7 +104,7 @@ export default function LessonsPage({ onSelectLesson, onStartLab, refreshTrigger
   const coreCompletedCount = completedIds.filter(id => !id.startsWith('lab-')).length
   const totalLessons = lessons.length
   const progressPercent = totalLessons > 0 ? Math.min(100, (coreCompletedCount / totalLessons) * 100) : 0
-  const totalXP = completedIds.length * 500
+  const totalXP = user?.xp || 0
 
   // Auditor Rank
   const auditorRank = useMemo(() => {
@@ -134,73 +134,72 @@ export default function LessonsPage({ onSelectLesson, onStartLab, refreshTrigger
         />
       )}
 
-      {/* Top Progress Dashboard Card */}
-      {!isGuest && user && (
-        <div className="p-6 md:px-8 border-b border-slate-900 bg-gradient-to-r from-slate-950 via-[#0d1017] to-slate-950 flex-shrink-0">
-          <div className="max-w-7xl mx-auto flex flex-col md:flex-row gap-5 items-start md:items-center justify-between">
-            {/* Left side: Stats & Rank */}
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center relative shadow-lg shadow-amber-500/5 animate-pulse">
-                <Trophy className="w-7 h-7 text-amber-500" />
-              </div>
-              <div>
-                <span className="text-[10px] font-mono text-slate-500 block uppercase tracking-widest">Danh hiệu kiểm toán</span>
-                <h3 className={`text-base font-extrabold font-display ${auditorRank.color}`}>
-                  {auditorRank.title}
-                </h3>
-                <p className="text-xs text-slate-400 font-mono mt-0.5">
-                  Tích lũy: <strong className="text-amber-500">{totalXP} XP</strong> • Hoàn thành: <strong>{coreCompletedCount} / {totalLessons}</strong> bài lý thuyết ({completedIds.filter(id => id.startsWith('lab-')).length} lab)
-                </p>
-              </div>
+      {/* Compact Combined Header (Rank, Progress, Title & Filters) */}
+      <div className="py-4 px-6 md:px-8 border-b border-slate-800 bg-gradient-to-r from-slate-950 via-[#0d1017] to-slate-950 flex-shrink-0">
+        <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between mb-4">
+          {/* Left side: Icon, Title & Rank Badge */}
+          <div className="flex items-center gap-3.5">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center flex-shrink-0 shadow-sm">
+              <GraduationCap className="w-5 h-5 text-amber-500" />
             </div>
+            <div>
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <h1 className="text-lg md:text-xl font-bold text-slate-100 font-display">
+                  Bài học Blockchain Security
+                </h1>
+                {!isGuest && user && (
+                  <span className={`text-[11px] font-extrabold font-display px-2 py-0.5 rounded-md bg-slate-900 border border-slate-800 ${auditorRank.color}`}>
+                    🏆 {auditorRank.title}
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-slate-400 font-mono mt-0.5">
+                {lessons.length} bài học • {lessons.filter(l => l.labEnabled).length} bài thực hành {!isGuest && user && <span>• Tích lũy: <strong className="text-amber-400">{totalXP} XP</strong></span>}
+              </p>
+            </div>
+          </div>
 
-            {/* Right side: Cyberpunk Progress Gauge & Certificate Button */}
-            <div className="flex items-center gap-4 w-full md:w-auto">
-              <div className="w-full md:w-80 bg-slate-900/60 border border-slate-850 p-4 rounded-2xl relative overflow-hidden backdrop-blur-md">
-                <div className="flex items-center justify-between text-xs font-mono mb-2">
+          {/* Right side: Compact Progress Gauge & Certificate Button */}
+          {!isGuest && user && (
+            <div className="flex items-center gap-3 w-full md:w-auto">
+              <div className="w-full md:w-64 bg-slate-900/60 border border-slate-850 px-3.5 py-2 rounded-xl relative overflow-hidden backdrop-blur-md">
+                <div className="flex items-center justify-between text-[11px] font-mono mb-1">
                   <span className="text-slate-400 uppercase tracking-wider">Tiến trình học tập</span>
-                  <span className="text-amber-400 font-bold font-mono">{Math.round(progressPercent)}%</span>
+                  <span className="text-amber-400 font-bold">{Math.round(progressPercent)}%</span>
                 </div>
-                <div className="w-full bg-slate-950 h-3 rounded-full overflow-hidden border border-slate-850 relative">
+                <div className="w-full bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-850 relative">
                   <div 
-                    className="bg-gradient-to-r from-amber-500 via-amber-600 to-emerald-500 h-full rounded-full transition-all duration-1000 shadow-md shadow-amber-500/20"
+                    className="bg-gradient-to-r from-amber-500 via-amber-600 to-emerald-500 h-full rounded-full transition-all duration-1000 shadow-sm"
                     style={{ width: `${progressPercent}%` }}
                   />
                 </div>
               </div>
 
-              {/* Certificate Button */}
               {progressPercent >= 50 && (
                 <button
                   onClick={() => setShowCertificate(true)}
-                  className="px-4 py-3 bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 hover:brightness-110 text-slate-950 rounded-2xl font-bold text-xs font-mono transition shadow-lg shadow-amber-500/15 flex items-center gap-1.5 flex-shrink-0"
+                  className="px-3.5 py-2 bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 hover:brightness-110 text-slate-950 rounded-xl font-bold text-xs font-mono transition shadow-md flex items-center gap-1.5 flex-shrink-0"
                 >
-                  <Trophy className="w-4 h-4" />
+                  <Trophy className="w-3.5 h-3.5" />
                   <span>Chứng Nhận</span>
                 </button>
               )}
+
+              {onOpenLeaderboard && (
+                <button
+                  onClick={onOpenLeaderboard}
+                  className="px-3.5 py-2 bg-slate-900/80 hover:bg-slate-800 border border-slate-750 text-amber-400 rounded-xl font-bold text-xs font-display transition shadow-sm flex items-center gap-1.5 flex-shrink-0 cursor-pointer"
+                  title="Xem Bảng Xếp Hạng Hào Quang"
+                >
+                  <Trophy className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Xếp Hạng</span>
+                </button>
+              )}
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Header */}
-      <div className="p-6 md:px-8 border-b border-slate-800 bg-slate-950/70 backdrop-blur-md flex-shrink-0">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center">
-            <GraduationCap className="w-5 h-5 text-amber-500" />
-          </div>
-          <div>
-            <h1 className="text-xl md:text-2xl font-bold text-slate-100 font-display">
-              Bài học Blockchain Security
-            </h1>
-            <p className="text-xs text-slate-400 font-mono">
-              {lessons.length} bài học • {lessons.filter(l => l.labEnabled).length} bài thực hành
-            </p>
-          </div>
+          )}
         </div>
 
-        {/* Search & Filters */}
+        {/* Search & Filters Row */}
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
@@ -209,7 +208,7 @@ export default function LessonsPage({ onSelectLesson, onStartLab, refreshTrigger
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Tìm kiếm bài học..."
-              className="w-full bg-slate-900/80 border border-slate-800 rounded-xl py-2.5 pl-10 pr-4 text-sm text-slate-100 placeholder-slate-600 focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/20 transition-all font-sans"
+              className="w-full bg-slate-900/80 border border-slate-800 rounded-xl py-2 pl-9 pr-4 text-xs md:text-sm text-slate-100 placeholder-slate-600 focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/20 transition-all font-sans"
             />
           </div>
           
@@ -217,7 +216,7 @@ export default function LessonsPage({ onSelectLesson, onStartLab, refreshTrigger
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              className="bg-slate-900/80 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-slate-300 font-mono focus:border-amber-500/50 transition-all cursor-pointer"
+              className="bg-slate-900/80 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-300 font-mono focus:border-amber-500/50 transition-all cursor-pointer"
             >
               <option value="all">Tất cả chủ đề</option>
               {categories.filter(c => c && c !== 'all').map((cat, idx) => (
@@ -227,7 +226,7 @@ export default function LessonsPage({ onSelectLesson, onStartLab, refreshTrigger
             <select
               value={selectedDifficulty}
               onChange={(e) => setSelectedDifficulty(e.target.value)}
-              className="bg-slate-900/80 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-slate-300 font-mono focus:border-amber-500/50 transition-all cursor-pointer"
+              className="bg-slate-900/80 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-300 font-mono focus:border-amber-500/50 transition-all cursor-pointer"
             >
               <option value="all">Tất cả cấp độ</option>
               <option value="beginner">Cơ bản</option>
